@@ -1395,6 +1395,31 @@ export const StoryReadScreen = () => {
     // Animation value for button press effect
     const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
     
+    // Create a single animation scale ref for all buttons
+    const buttonScale = useRef(new Animated.Value(1)).current;
+    
+    // Set up effect for button animation that runs when selectedButtonIndex changes
+    useEffect(() => {
+      if (selectedButtonIndex !== null) {
+        Animated.sequence([
+          Animated.timing(buttonScale, {
+            toValue: 1.05,
+            duration: 150,
+            useNativeDriver: true,
+            easing: Easing.out(Easing.ease)
+          }),
+          Animated.timing(buttonScale, {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease)
+          })
+        ]).start(() => {
+          setSelectedButtonIndex(null);
+        });
+      }
+    }, [selectedButtonIndex]);
+    
     return (
       <View style={styles.choicesContainer}>
         {/* Story context header */}
@@ -1428,37 +1453,13 @@ export const StoryReadScreen = () => {
           {narrativeChoices.map((choice, index) => {
             const actualChoice = availableChoices[choice.id % availableChoices.length];
             const isActive = !!actualChoice;
-            
-            // Animation scale for button press
-            const scale = useRef(new Animated.Value(1)).current;
-            
-            // Animate button press
-            useEffect(() => {
-              if (selectedButtonIndex === index) {
-                Animated.sequence([
-                  Animated.timing(scale, {
-                    toValue: 1.05,
-                    duration: 150,
-                    useNativeDriver: true,
-                    easing: Easing.out(Easing.ease)
-                  }),
-                  Animated.timing(scale, {
-                    toValue: 1,
-                    duration: 150,
-                    useNativeDriver: true,
-                    easing: Easing.inOut(Easing.ease)
-                  })
-                ]).start(() => {
-                  setSelectedButtonIndex(null);
-                });
-              }
-            }, [selectedButtonIndex]);
+            const isSelected = selectedButtonIndex === index;
             
             return (
               <Animated.View 
                 key={index}
                 style={[
-                  { transform: [{ scale }] }
+                  { transform: [{ scale: isSelected ? buttonScale : 1 }] }
                 ]}
               >
                 <TouchableOpacity 
@@ -1468,10 +1469,9 @@ export const StoryReadScreen = () => {
                   ]}
                   onPress={() => {
                     if (isActive && !isProcessingChoice) {
-                      setSelectedButtonIndex(index as number);
+                      setSelectedButtonIndex(index);
                       
-                      // Remove the problematic sound loading code
-                      // Instead, just use a simple delay before handling the choice
+                      // Simple delay before handling the choice
                       setTimeout(() => {
                         handleSelectChoice(actualChoice);
                       }, 300);
