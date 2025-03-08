@@ -570,6 +570,10 @@ interface Styles {
   whiteButton: ViewStyle;
   purpleButton: ViewStyle;
   favoritesText: TextStyle;
+  choicesContainer: ViewStyle;
+  choicesTitle: TextStyle;
+  choicesGrid: ViewStyle;
+  choiceIcon: TextStyle;
 }
 
 // Main story reading screen component
@@ -1158,10 +1162,22 @@ export const StoryReadScreen = () => {
   
   // Handle choice selection
   const handleSelectChoice = useCallback((choice) => {
-    console.log('Selected choice:', choice.id);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (!choice) return;
+    
+    // Set the selected choice using existing makeChoice function
     makeChoice(choice.id);
-  }, [makeChoice]);
+    
+    // Simulate processing time for the choice
+    setTimeout(() => {
+      // After processing, update state to return to image
+      // This will be handled by the useStoryExperience hook
+      
+      // Example: Play audio after choice is made
+      if (currentAudioSegment && !isPlaying) {
+        playAudio();
+      }
+    }, 1500); // Short delay to show the choice was selected
+  }, [makeChoice, currentAudioSegment, isPlaying, playAudio]);
   
   // Handle voice input for choosing options
   const handleStartVoiceInput = useCallback(() => {
@@ -1320,27 +1336,12 @@ export const StoryReadScreen = () => {
     if (!isAtChoicePoint) return null;
 
     return (
-      <View style={styles.choicesOverlay}>
-        <Text style={styles.genresTitle}>Choices</Text>
+      <View style={styles.choicesContainer}>
+        <Text style={styles.choicesTitle}>Choose Your Path</Text>
 
-        {/* Pink circle with Flow text */}
-        <View style={styles.circleContainer}>
-          {/* Main pink circle */}
-          <LinearGradient
-            colors={['#FF3366', '#FF0066']}
-            style={styles.pinkCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-
-          {/* Center Flow text */}
-          <View style={styles.flowCircle}>
-            <Text style={styles.flowText}>Decide</Text>
-          </View>
-
-          {/* Story choices instead of music genres */}
+        <View style={styles.choicesGrid}>
           <TouchableOpacity 
-            style={[styles.genreItem, styles.rockPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[0];
               if (choice && !isProcessingChoice) {
@@ -1351,15 +1352,15 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="sword" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Fight</Text>
+            <Text style={styles.choiceText}>Fight</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.genreItem, styles.kpopPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[1];
               if (choice && !isProcessingChoice) {
@@ -1370,15 +1371,15 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="run-fast" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Run Away</Text>
+            <Text style={styles.choiceText}>Run Away</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.genreItem, styles.popPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[2];
               if (choice && !isProcessingChoice) {
@@ -1389,15 +1390,15 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="chat" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Talk</Text>
+            <Text style={styles.choiceText}>Talk</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.genreItem, styles.rnbPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[3];
               if (choice && !isProcessingChoice) {
@@ -1408,15 +1409,15 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="hand-peace" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Help</Text>
+            <Text style={styles.choiceText}>Help</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.genreItem, styles.altPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[4];
               if (choice && !isProcessingChoice) {
@@ -1427,15 +1428,15 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="eye" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Observe</Text>
+            <Text style={styles.choiceText}>Observe</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.genreItem, styles.rapPosition]}
+            style={styles.choiceButton}
             onPress={() => {
               const choice = availableChoices[5];
               if (choice && !isProcessingChoice) {
@@ -1446,25 +1447,12 @@ export const StoryReadScreen = () => {
           >
             <MaterialCommunityIcons 
               name="flashlight" 
-              size={24} 
+              size={28} 
               color="white" 
-              style={styles.genreIcon}
+              style={styles.choiceIcon}
             />
-            <Text style={styles.genreText}>Investigate</Text>
+            <Text style={styles.choiceText}>Investigate</Text>
           </TouchableOpacity>
-        </View>
-
-        {/* More favorites at bottom - changed text to reflect story context */}
-        <View style={styles.favoritesContainer}>
-          <View style={styles.favoriteButtons}>
-            <View style={styles.whiteButton}>
-              <MaterialCommunityIcons name="star-outline" size={22} color="black" />
-            </View>
-            <View style={styles.purpleButton}>
-              <MaterialCommunityIcons name="heart" size={22} color="white" />
-            </View>
-          </View>
-          <Text style={styles.favoritesText}>More options</Text>
         </View>
       </View>
     );
@@ -1516,11 +1504,14 @@ export const StoryReadScreen = () => {
       
       {/* Main Content - removed HQ badge and Lyrics button */}
       <View style={styles.content}>
-        <Image 
-          source={require('../../../assets/images/Netflix iOS 91.png')}
-          style={styles.coverImage}
-          resizeMode="contain"
-        />
+        {!isAtChoicePoint && (
+          <Image 
+            source={require('../../../assets/images/Netflix iOS 91.png')}
+            style={styles.coverImage}
+            resizeMode="contain"
+          />
+        )}
+        {isAtChoicePoint && renderChoices()}
       </View>
       
       {/* Bottom Controls */}
@@ -1587,7 +1578,6 @@ export const StoryReadScreen = () => {
         </View>
       </View>
       
-      {isAtChoicePoint && renderChoices()}
       {selectedChoice && renderKarmaDisplay()}
       {isVoiceActive && (
         <VoiceInputIndicator 
@@ -1639,9 +1629,9 @@ const styles = StyleSheet.create<Styles>({
   },
   content: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    alignItems: 'center',
+    width: '100%',
   },
   coverImage: {
     width: '100%',
@@ -1746,12 +1736,15 @@ const styles = StyleSheet.create<Styles>({
     marginHorizontal: 8,
   },
   choiceButton: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 32,
+    width: '48%',
+    backgroundColor: 'rgba(40, 40, 40, 0.8)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   choiceButtonDisabled: {
     opacity: 0.5,
@@ -1759,7 +1752,8 @@ const styles = StyleSheet.create<Styles>({
   choiceText: {
     color: '#FFFFFF',
     fontSize: 16,
-    flex: 1,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   karmaContainer: {
     flexDirection: 'row',
@@ -1938,5 +1932,28 @@ const styles = StyleSheet.create<Styles>({
     color: 'white',
     fontSize: 16,
     fontWeight: '500',
+  },
+  choicesContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  choicesTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  choicesGrid: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  choiceIcon: {
+    marginBottom: 8,
   },
 }); 
