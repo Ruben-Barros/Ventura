@@ -574,6 +574,21 @@ interface Styles {
   choicesTitle: TextStyle;
   choicesGrid: ViewStyle;
   choiceIcon: TextStyle;
+  choiceStoryContext: TextStyle;
+  choiceQuestion: TextStyle;
+  countdownContainer: ViewStyle;
+  countdownBg: ViewStyle;
+  countdownFg: ViewStyle;
+  countdownText: TextStyle;
+  choicesScrollView: ViewStyle;
+  choicesScrollContent: ViewStyle;
+  choiceButtonSelected: ViewStyle;
+  choiceIconContainer: ViewStyle;
+  choiceTextContainer: ViewStyle;
+  feedbackBadge: ViewStyle;
+  feedbackText: TextStyle;
+  choiceDescription: TextStyle;
+  choiceArrow: TextStyle;
 }
 
 // Main story reading screen component
@@ -1331,129 +1346,225 @@ export const StoryReadScreen = () => {
     }
   };
 
-  // Update the choice selection to use circular layout
+  // First, update the renderChoices function with the new Netflix-inspired vertical list design
   const renderChoices = () => {
     if (!isAtChoicePoint) return null;
 
+    // Story-specific narrative context (example titles)
+    const storyContext = {
+      title: "The Forest's Edge",
+      question: "What will you do next?"
+    };
+    
+    // Narrative-specific choices with contextual labels
+    const narrativeChoices = [
+      { 
+        id: 0, 
+        icon: 'sword', 
+        label: 'Confront the Whispering Shadow',
+        description: 'Take a stand against the unknown presence' 
+      },
+      { 
+        id: 1, 
+        icon: 'run-fast', 
+        label: 'Flee Through the Misty Path',
+        description: 'Seek safety in the depths of the forest' 
+      },
+      { 
+        id: 2, 
+        icon: 'chat', 
+        label: 'Call Out to the Presence',
+        description: 'Attempt to communicate with whatever lurks nearby' 
+      },
+      { 
+        id: 3, 
+        icon: 'hand-peace', 
+        label: 'Offer a Sign of Peace',
+        description: 'Show that you mean no harm' 
+      },
+      { 
+        id: 4, 
+        icon: 'eye', 
+        label: 'Search the Surrounding Area',
+        description: 'Look for clues or hidden paths' 
+      },
+      { 
+        id: 5, 
+        icon: 'flashlight', 
+        label: 'Investigate the Strange Sounds',
+        description: 'Determine the source of the disturbance' 
+      }
+    ];
+
+    // Timer state for urgency (10 seconds countdown)
+    const [timeRemaining, setTimeRemaining] = useState(10);
+    const timerProgress = timeRemaining / 10; // 0 to 1 scale
+
+    // Set up countdown timer
+    useEffect(() => {
+      if (!isAtChoicePoint) return;
+      
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 0) {
+            // Auto-select a neutral option when time expires
+            handleTimeExpired();
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(timer);
+    }, [isAtChoicePoint]);
+
+    // Handle time expiration
+    const handleTimeExpired = () => {
+      // Select the "observe" option (usually the most neutral)
+      const defaultChoice = availableChoices[4];
+      if (defaultChoice) {
+        handleSelectChoice(defaultChoice);
+      }
+    };
+
+    // Animation value for button press effect
+    const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
+    
     return (
       <View style={styles.choicesContainer}>
-        <Text style={styles.choicesTitle}>Choose Your Path</Text>
-
-        <View style={styles.choicesGrid}>
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[0];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[0] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="sword" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
+        {/* Story context header */}
+        <Text style={styles.choiceStoryContext}>{storyContext.title}</Text>
+        
+        {/* Choice prompt question */}
+        <Text style={styles.choiceQuestion}>{storyContext.question}</Text>
+        
+        {/* Countdown timer */}
+        <View style={styles.countdownContainer}>
+          <View style={styles.countdownBg}>
+            <View 
+              style={[
+                styles.countdownFg, 
+                { 
+                  width: `${timerProgress * 100}%`,
+                  backgroundColor: timerProgress < 0.3 ? '#FF0000' : '#00A8FF' 
+                }
+              ]} 
             />
-            <Text style={styles.choiceText}>Fight</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[1];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[1] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="run-fast" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
-            />
-            <Text style={styles.choiceText}>Run Away</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[2];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[2] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="chat" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
-            />
-            <Text style={styles.choiceText}>Talk</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[3];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[3] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="hand-peace" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
-            />
-            <Text style={styles.choiceText}>Help</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[4];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[4] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="eye" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
-            />
-            <Text style={styles.choiceText}>Observe</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.choiceButton}
-            onPress={() => {
-              const choice = availableChoices[5];
-              if (choice && !isProcessingChoice) {
-                handleSelectChoice(choice);
-              }
-            }}
-            disabled={!availableChoices[5] || isProcessingChoice}
-          >
-            <MaterialCommunityIcons 
-              name="flashlight" 
-              size={28} 
-              color="white" 
-              style={styles.choiceIcon}
-            />
-            <Text style={styles.choiceText}>Investigate</Text>
-          </TouchableOpacity>
+          </View>
+          <Text style={styles.countdownText}>{timeRemaining}s</Text>
         </View>
+        
+        {/* Vertical list of choices */}
+        <ScrollView 
+          style={styles.choicesScrollView}
+          contentContainerStyle={styles.choicesScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {narrativeChoices.map((choice, index) => {
+            const actualChoice = availableChoices[choice.id % availableChoices.length];
+            const isActive = !!actualChoice;
+            
+            // Animation scale for button press
+            const scale = useRef(new Animated.Value(1)).current;
+            
+            // Animate button press
+            useEffect(() => {
+              if (selectedButtonIndex === index) {
+                Animated.sequence([
+                  Animated.timing(scale, {
+                    toValue: 1.05,
+                    duration: 150,
+                    useNativeDriver: true,
+                    easing: Easing.out(Easing.ease)
+                  }),
+                  Animated.timing(scale, {
+                    toValue: 1,
+                    duration: 150,
+                    useNativeDriver: true,
+                    easing: Easing.inOut(Easing.ease)
+                  })
+                ]).start(() => {
+                  setSelectedButtonIndex(null);
+                });
+              }
+            }, [selectedButtonIndex]);
+            
+            return (
+              <Animated.View 
+                key={index}
+                style={[
+                  { transform: [{ scale }] }
+                ]}
+              >
+                <TouchableOpacity 
+                  style={[
+                    styles.choiceButton,
+                    selectedButtonIndex === index && styles.choiceButtonSelected
+                  ]}
+                  onPress={() => {
+                    if (isActive && !isProcessingChoice) {
+                      setSelectedButtonIndex(index as number);
+                      
+                      // Play choice selection sound
+                      const playSelectionSound = async () => {
+                        const soundObject = new Audio.Sound();
+                        try {
+                          await soundObject.loadAsync(require('../../../assets/sounds/choice-select.mp3'));
+                          await soundObject.playAsync();
+                        } catch (error) {
+                          console.log('Error playing sound:', error);
+                        }
+                      };
+                      
+                      // Optional: Play sound if available
+                      // playSelectionSound();
+                      
+                      // Process the choice after a brief delay to show animation
+                      setTimeout(() => {
+                        handleSelectChoice(actualChoice);
+                      }, 300);
+                    }
+                  }}
+                  disabled={!isActive || isProcessingChoice}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.choiceIconContainer}>
+                    <MaterialCommunityIcons 
+                      name={choice.icon as any}
+                      size={28} 
+                      color="#FFFFFF"
+                    />
+                  </View>
+                  
+                  <View style={styles.choiceTextContainer}>
+                    <Text style={styles.choiceText}>{choice.label}</Text>
+                    <Text style={styles.choiceDescription}>{choice.description}</Text>
+                  </View>
+                  
+                  <MaterialCommunityIcons 
+                    name="chevron-right" 
+                    size={24} 
+                    color="#00A8FF"
+                    style={styles.choiceArrow}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </ScrollView>
+        
+        {/* Feedback badge (appears after selection) */}
+        {isProcessingChoice && selectedChoice && (
+          <View style={styles.feedbackBadge}>
+            <MaterialCommunityIcons 
+              name="check-circle" 
+              size={20} 
+              color="#00FF00"
+            />
+            <Text style={styles.feedbackText}>Choice Confirmed</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -1736,15 +1847,14 @@ const styles = StyleSheet.create<Styles>({
     marginHorizontal: 8,
   },
   choiceButton: {
-    width: '48%',
-    backgroundColor: 'rgba(40, 40, 40, 0.8)',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#4A4A4A',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(0, 168, 255, 0.3)', // #00A8FF with opacity
   },
   choiceButtonDisabled: {
     opacity: 0.5,
@@ -1753,7 +1863,6 @@ const styles = StyleSheet.create<Styles>({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-    textAlign: 'center',
   },
   karmaContainer: {
     flexDirection: 'row',
@@ -1935,9 +2044,12 @@ const styles = StyleSheet.create<Styles>({
   },
   choicesContainer: {
     width: '100%',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingTop: 20,
+    paddingBottom: 40,
   },
   choicesTitle: {
     fontSize: 28,
@@ -1955,5 +2067,95 @@ const styles = StyleSheet.create<Styles>({
   },
   choiceIcon: {
     marginBottom: 8,
+  },
+  choiceStoryContext: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  choiceQuestion: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '500',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  countdownContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  countdownBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#4A4A4A',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginRight: 8,
+  },
+  countdownFg: {
+    height: '100%',
+    backgroundColor: '#00A8FF',
+    borderRadius: 4,
+  },
+  countdownText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    width: 30,
+    textAlign: 'right',
+  },
+  choicesScrollView: {
+    width: '100%',
+    maxHeight: 380,
+  },
+  choicesScrollContent: {
+    paddingBottom: 16,
+  },
+  choiceButtonSelected: {
+    backgroundColor: '#2A2A2A',
+    borderColor: '#00A8FF',
+    borderWidth: 2,
+  },
+  choiceIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  choiceTextContainer: {
+    flex: 1,
+  },
+  choiceArrow: {
+    marginLeft: 8,
+  },
+  feedbackBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    position: 'absolute',
+    bottom: 16,
+    borderWidth: 1,
+    borderColor: '#00FF00',
+  },
+  feedbackText: {
+    color: '#00FF00',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  choiceDescription: {
+    color: '#B0B0B0', // Light gray for secondary text
+    fontSize: 14,
+    marginTop: 4,
   },
 }); 
