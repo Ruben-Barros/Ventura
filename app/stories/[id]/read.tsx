@@ -604,42 +604,6 @@ export const StoryReadScreen = () => {
   const { user, profile } = useAuth();
   const { state, initializeStory, pauseAudio, playAudio, rewindAudio, fastForwardAudio, makeChoice } = useStoryExperience();
   
-  // Add direct audio test function
-  const testDirectAudio = async () => {
-    try {
-      console.log('Testing direct audio playback');
-      
-      // Set up audio mode first
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false, // Use speaker
-        allowsRecordingIOS: false,
-      });
-      
-      // Use text-to-speech for reliability
-      console.log('Using text-to-speech for audio test');
-      await textToSpeech.init();
-      
-      // First, try short message at maximum volume
-      console.log('AUDIO DEBUG: Speaking test message at maximum volume');
-      await textToSpeech.speak("This is a test of the audio system. If you can hear this message, audio is working correctly.", {
-        onStart: () => console.log('TTS test started'),
-        onComplete: () => console.log('TTS test completed'),
-        onError: (error) => console.error('TTS test error:', error)
-      });
-      
-      // Alert to let user know sound should be playing
-      alert('Audio test has been triggered. You should hear voice saying "This is a test of the audio system..."');
-      
-      console.log('Audio test completed');
-    } catch (error) {
-      console.error('Error during direct audio test:', error);
-      alert(`Audio test failed with error: ${error.message}`);
-    }
-  };
-  
   // Destructure frequently accessed state properties for better readability 
   // and to prevent unnecessary renders
   const { 
@@ -1506,21 +1470,8 @@ export const StoryReadScreen = () => {
                     if (isActive && !isProcessingChoice) {
                       setSelectedButtonIndex(index as number);
                       
-                      // Play choice selection sound
-                      const playSelectionSound = async () => {
-                        const soundObject = new Audio.Sound();
-                        try {
-                          await soundObject.loadAsync(require('../../../assets/sounds/choice-select.mp3'));
-                          await soundObject.playAsync();
-                        } catch (error) {
-                          console.log('Error playing sound:', error);
-                        }
-                      };
-                      
-                      // Optional: Play sound if available
-                      // playSelectionSound();
-                      
-                      // Process the choice after a brief delay to show animation
+                      // Remove the problematic sound loading code
+                      // Instead, just use a simple delay before handling the choice
                       setTimeout(() => {
                         handleSelectChoice(actualChoice);
                       }, 300);
