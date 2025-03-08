@@ -12,18 +12,25 @@ import {
   Pressable,
   Text,
   Vibration,
-  Easing
+  Easing,
+  Image,
+  StatusBar,
+  ViewStyle,
+  TextStyle,
+  ImageStyle
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { IconButton, Divider, Portal } from 'react-native-paper';
+import { IconButton, Button, Portal } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import LottieView from 'lottie-react-native';
 import * as Haptics from 'expo-haptics';
-import textToSpeech, { LogLevel } from '../../../services/ai/textToSpeech';
+import Svg, { Path } from 'react-native-svg';
 import * as Reanimated from 'react-native-reanimated';
+import { BlurView } from '@react-native-community/blur';
+import textToSpeech, { LogLevel } from '../../../services/ai/textToSpeech';
 
 import { useAuth } from '../../../contexts/AuthContext';
 import { useStoryExperience } from '../../../contexts/StoryExperienceContext';
@@ -33,24 +40,27 @@ import {
   StoryExperienceMode,
   StoryChoiceWithKarma 
 } from '../../../types/storyExperience.types';
+import { StoryChoice } from '../../../types/story.types';
 import { KarmaType } from '../../../services/game/karmaSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Typography from '../../../components/ui/Typography';
-import Button from '../../../components/ui/Button';
 import { useStoryteller } from '../../../contexts/StorytellerContext';
 import { throttle } from 'lodash';
 import AnimatedBackground from '../../../components/ui/AnimatedBackground';
 import { useCompatibleAnimation as useCompatAnimationFallback } from '../../../components/ui/AnimationFallback';
+import { ProgressBar as PaperProgressBar } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
-// Add this interface near the top of the file, below the imports
-interface Choice {
-  id: string;
-  text: string;
-  karma?: number;
-}
+// Add formatTime function at the top level
+const formatTime = (milliseconds: number) => {
+  if (!Number.isFinite(milliseconds)) return '0:00';
+  const totalSeconds = Math.floor(milliseconds / 1000) || 0;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+};
 
 // Define the AudioControlsProps interface
 interface AudioControlsProps {
@@ -64,10 +74,16 @@ interface AudioControlsProps {
 
 // Enhanced audio progress bar component with waveform visualization
 const ProgressBar = ({ currentTime, duration, onSeek }) => {
-  const progress = duration > 0 ? currentTime / duration : 0;
+  // Ensure we have valid numbers and handle edge cases
+  const safeCurrentTime = Number.isFinite(currentTime) ? Math.max(0, currentTime) : 0;
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 1;
   
-  const formatTime = (milliseconds) => {
-    const totalSeconds = Math.floor(milliseconds / 1000);
+  // Calculate progress with bounds checking and integer conversion
+  const progress = Math.min(1, Math.max(0, Math.floor((safeCurrentTime / safeDuration) * 100) / 100)) || 0;
+  
+  const formatTime = (milliseconds: number) => {
+    if (!Number.isFinite(milliseconds)) return '0:00';
+    const totalSeconds = Math.floor(milliseconds / 1000) || 0;
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
@@ -76,27 +92,32 @@ const ProgressBar = ({ currentTime, duration, onSeek }) => {
   return (
     <View style={styles.progressContainer}>
       <Typography variant="caption" style={styles.timeText}>
-        {formatTime(currentTime)}
+        {formatTime(safeCurrentTime)}
       </Typography>
       
       <View style={styles.progressBarContainer}>
         <View style={styles.progressBarBg}>
-          <View style={[styles.progressBarFg, { width: `${progress * 100}%` }]} />
+          <View style={[styles.progressBarFg, { width: `${Math.floor(progress * 100)}%` }]} />
         </View>
         <Pressable 
           style={styles.progressBarTouch} 
           onPress={(e) => {
             const touchX = e.nativeEvent.locationX;
-            const barWidth = width - 120;
-            const seekPosition = (touchX / barWidth) * duration;
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            onSeek(seekPosition);
+            const barWidth = width - 120; // Account for padding and time labels
+            let seekPosition = (touchX / barWidth) * safeDuration;
+            
+            // Ensure seekPosition is valid before calling onSeek
+            if (Number.isFinite(seekPosition)) {
+              seekPosition = Math.floor(Math.max(0, Math.min(seekPosition, safeDuration)));
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onSeek(seekPosition);
+            }
           }}
         />
       </View>
       
       <Typography variant="caption" style={styles.timeText}>
-        {formatTime(duration)}
+        {formatTime(safeDuration)}
       </Typography>
     </View>
   );
@@ -150,8 +171,8 @@ const ChoiceButton = React.memo(({
   onSelect, 
   disabled 
 }: { 
-  choice: Choice; 
-  onSelect: (choice: Choice) => void; 
+  choice: StoryChoice; 
+  onSelect: (choice: StoryChoice) => void; 
   disabled: boolean;
 }) => {
   return (
@@ -164,17 +185,17 @@ const ChoiceButton = React.memo(({
       disabled={disabled}
     >
       <Typography variant="body1" style={styles.choiceText}>
-        {choice.text}
+        {choice.choice_text}
       </Typography>
-      {choice.karma !== undefined && (
+      {(choice as StoryChoiceWithKarma).karmaImpact && (
         <View style={styles.karmaContainer}>
           <MaterialCommunityIcons 
-            name={choice.karma >= 0 ? "heart" : "heart-broken"} 
+            name={(choice as StoryChoiceWithKarma).karmaImpact?.type === KarmaType.GOOD ? "heart" : "heart-broken"} 
             size={16} 
-            color={choice.karma >= 0 ? "#FF6B6B" : "#FF6B6B"} 
+            color={(choice as StoryChoiceWithKarma).karmaImpact?.type === KarmaType.GOOD ? "#32CD32" : "#FF4500"} 
           />
           <Typography variant="caption" style={styles.karmaText}>
-            {Math.abs(choice.karma)}
+            {Math.abs((choice as StoryChoiceWithKarma).karmaImpact?.value || 0)}
           </Typography>
         </View>
       )}
@@ -269,12 +290,15 @@ const VoiceInputIndicator = ({ isActive, onCancel }) => {
 
 // Update the WaveformBar component to use the animation fallback system
 const WaveformBar = ({ index, totalBars, audioLevel = 0.5 }) => {
-  const leftPercent = (index / (totalBars - 1)) * 100;
+  // Ensure valid numeric values
+  const safeIndex = Math.max(0, Math.min(Number.isFinite(index) ? index : 0, (totalBars || 1) - 1));
+  const safeTotalBars = Math.max(1, Number.isFinite(totalBars) ? totalBars : 1);
+  const safeAudioLevel = Number.isFinite(audioLevel) ? Math.min(1, Math.max(0, audioLevel)) : 0.5;
   
-  // Make the height responsive to audio level if provided
-  // Otherwise use a random height that's more substantial
-  const heightMultiplier = audioLevel || (0.3 + Math.random() * 0.4);
-  const baseHeight = 20 + (heightMultiplier * 40);
+  // Calculate position and dimensions
+  const leftPercent = Math.floor((safeIndex / (safeTotalBars - 1)) * 100);
+  const heightMultiplier = safeAudioLevel || (0.3 + Math.random() * 0.4);
+  const baseHeight = Math.floor(20 + (heightMultiplier * 40));
   
   // Try to use our animation fallback
   const compatAnim = useCompatAnimationFallback(0);
@@ -285,7 +309,7 @@ const WaveformBar = ({ index, totalBars, audioLevel = 0.5 }) => {
   useEffect(() => {
     if (isPlaying) {
       // Create a random duration for natural effect
-      const duration = 800 + Math.random() * 600;
+      const duration = 800 + Math.floor(Math.random() * 600);
       
       // Loop the animation by changing the target value
       const loop = () => {
@@ -315,11 +339,12 @@ const WaveformBar = ({ index, totalBars, audioLevel = 0.5 }) => {
         left: `${leftPercent}%`,
         bottom: 0,
         width: 4,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)', // Increased opacity for better visibility
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
         borderRadius: 2,
         height: compatAnim.value.interpolate({
           inputRange: [0, 1],
-          outputRange: [baseHeight * 0.6, baseHeight]
+          outputRange: [Math.floor(baseHeight * 0.6), baseHeight],
+          extrapolate: 'clamp'
         })
       }}
     />
@@ -328,8 +353,13 @@ const WaveformBar = ({ index, totalBars, audioLevel = 0.5 }) => {
 
 // Update SmallWaveformBar for the audio controls with compatible animation
 const SmallWaveformBar = ({ index, totalBars = 10, isPlaying }) => {
-  const leftPercent = (index / (totalBars - 1)) * 100;
-  const baseHeight = 5 + Math.random() * 15;
+  // Ensure valid numeric values
+  const safeIndex = Math.max(0, Math.min(Number.isFinite(index) ? index : 0, (totalBars || 1) - 1));
+  const safeTotalBars = Math.max(1, Number.isFinite(totalBars) ? totalBars : 10);
+  
+  // Calculate position and dimensions
+  const leftPercent = Math.floor((safeIndex / (safeTotalBars - 1)) * 100);
+  const baseHeight = Math.floor(5 + Math.random() * 15);
   
   // Use our compatible animation system
   const compatAnim = useCompatAnimationFallback(0);
@@ -337,7 +367,7 @@ const SmallWaveformBar = ({ index, totalBars = 10, isPlaying }) => {
   useEffect(() => {
     if (isPlaying) {
       // Create random durations for natural effect
-      const duration = 700 + Math.random() * 500;
+      const duration = 700 + Math.floor(Math.random() * 500);
       
       // Loop the animation by changing the target value
       const loop = () => {
@@ -367,16 +397,180 @@ const SmallWaveformBar = ({ index, totalBars = 10, isPlaying }) => {
         left: `${leftPercent}%`,
         bottom: 0,
         width: 2,
-        backgroundColor: 'rgba(255, 255, 255, 0.6)', // Increased opacity for better visibility
+        backgroundColor: 'rgba(255, 255, 255, 0.6)',
         borderRadius: 1,
         height: compatAnim.value.interpolate({
           inputRange: [0, 1],
-          outputRange: [baseHeight * 0.6, baseHeight]
+          outputRange: [Math.floor(baseHeight * 0.6), baseHeight],
+          extrapolate: 'clamp'
         })
       }}
     />
   );
 };
+
+// Enhanced Waveform component with SVG
+const Waveform = ({ isPlaying, amplitude = 0.5 }) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+  const safeAmplitude = Number.isFinite(amplitude) ? Math.min(1, Math.max(0, amplitude)) : 0.5;
+
+  useEffect(() => {
+    if (isPlaying) {
+      const animation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animatedValue, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease)
+          }),
+          Animated.timing(animatedValue, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+            easing: Easing.inOut(Easing.ease)
+          })
+        ])
+      );
+      
+      animation.start();
+      
+      return () => {
+        animation.stop();
+        animatedValue.setValue(0);
+      };
+    } else {
+      Animated.timing(animatedValue, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true
+      }).start();
+    }
+  }, [isPlaying]);
+
+  // Calculate dimensions once
+  const barWidth = 3;
+  const spacing = Math.floor((width - 32 - (30 * barWidth)) / 29); // Ensure integer spacing
+  const baseHeight = 20;
+  const maxScale = safeAmplitude * 2;
+
+  return (
+    <View style={styles.waveformContainer}>
+      {Array.from({ length: 30 }).map((_, index) => {
+        // Calculate x position using integer math
+        const x = Math.floor(index * (barWidth + spacing));
+        
+        return (
+          <Animated.View 
+            key={index} 
+            style={[
+              styles.waveformBar,
+              {
+                left: x,
+                width: barWidth,
+                height: baseHeight,
+                transform: [{
+                  scaleY: animatedValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, maxScale],
+                    extrapolate: 'clamp'
+                  })
+                }]
+              }
+            ]} 
+          />
+        );
+      })}
+    </View>
+  );
+};
+
+// Update the KarmaBar component
+const KarmaBar = ({ karma }) => {
+  const colors = karma > 0 
+    ? ['#228B22', '#32CD32'] as const
+    : karma < 0 
+      ? ['#FF4500', '#FF6347'] as const
+      : ['#666666', '#888888'] as const;
+
+  return (
+    <LinearGradient
+      colors={colors}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={styles.karmaBar}
+    >
+      <Text style={styles.karmaText}>
+        {karma > 0 ? 'Heroic' : karma < 0 ? 'Chaotic' : 'Neutral'} ({karma})
+      </Text>
+    </LinearGradient>
+  );
+};
+
+// Add TypeScript interface for styles
+interface Styles {
+  container: ViewStyle;
+  header: ViewStyle;
+  backButton: ViewStyle;
+  headerTextContainer: ViewStyle;
+  headerTitle: TextStyle;
+  storyTitle: TextStyle;
+  castButton: ViewStyle;
+  content: ViewStyle;
+  coverImage: ImageStyle;
+  hqBadge: ViewStyle;
+  hqText: TextStyle;
+  lyricsButton: ViewStyle;
+  lyricsButtonText: TextStyle;
+  bottomControls: ViewStyle;
+  progressContainer: ViewStyle;
+  timeText: TextStyle;
+  progressBarContainer: ViewStyle;
+  progressBarBg: ViewStyle;
+  progressBarFg: ViewStyle;
+  controls: ViewStyle;
+  playButton: ViewStyle;
+  bottomActions: ViewStyle;
+  actionButton: ViewStyle;
+  progressBarTouch: ViewStyle;
+  audioControls: ViewStyle;
+  audioButton: ViewStyle;
+  choiceButton: ViewStyle;
+  choiceButtonDisabled: ViewStyle;
+  choiceText: TextStyle;
+  karmaContainer: ViewStyle;
+  karmaText: TextStyle;
+  karmaIndicator: ViewStyle;
+  voiceIndicatorContainer: ViewStyle;
+  voiceIndicator: ViewStyle;
+  voiceListeningText: TextStyle;
+  voiceCancelButton: ViewStyle;
+  voiceCancelText: TextStyle;
+  waveformContainer: ViewStyle;
+  waveformBar: ViewStyle;
+  karmaBar: ViewStyle;
+  choicesOverlay: ViewStyle;
+  genresTitle: TextStyle;
+  circleContainer: ViewStyle;
+  pinkCircle: ViewStyle;
+  flowCircle: ViewStyle;
+  flowText: TextStyle;
+  genreItem: ViewStyle;
+  genreIcon: TextStyle;
+  genreText: TextStyle;
+  // Position styles for each genre
+  rockPosition: ViewStyle;
+  kpopPosition: ViewStyle;
+  popPosition: ViewStyle;
+  rnbPosition: ViewStyle;
+  altPosition: ViewStyle;
+  rapPosition: ViewStyle;
+  favoritesContainer: ViewStyle;
+  favoriteButtons: ViewStyle;
+  whiteButton: ViewStyle;
+  purpleButton: ViewStyle;
+  favoritesText: TextStyle;
+}
 
 // Main story reading screen component
 export const StoryReadScreen = () => {
@@ -384,8 +578,11 @@ export const StoryReadScreen = () => {
   const { id } = useLocalSearchParams();
   const storyId = Array.isArray(id) ? id[0] : id;
   
+  // Add isLoading state variable
+  const [isLoading, setIsLoading] = useState(false);
+  
   // Context and state hooks
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { state, initializeStory, pauseAudio, playAudio, rewindAudio, fastForwardAudio, makeChoice } = useStoryExperience();
   
   // Add direct audio test function
@@ -1096,610 +1293,404 @@ export const StoryReadScreen = () => {
     }
   }, [isAtChoicePoint, isPlaying]);
   
+  // New state for enhanced features
+  const [dailyChoices, setDailyChoices] = useState(0);
+  const [storyPoints, setStoryPoints] = useState(0);
+  const [badgeEarned, setBadgeEarned] = useState(false);
+  const [showSocialPeek, setShowSocialPeek] = useState(false);
+
+  // Background animation ref
+  const forestAnimation = useRef(null);
+
+  // Update the progress bar press handler
+  const handleProgressPress = (e: any) => {
+    const touchX = e.nativeEvent.locationX;
+    const barWidth = width - 120;
+    let seekPosition = (touchX / barWidth) * playbackState.duration;
+    
+    if (Number.isFinite(seekPosition)) {
+      seekPosition = Math.floor(Math.max(0, Math.min(seekPosition, playbackState.duration)));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      seekToPosition(seekPosition);
+    }
+  };
+
+  // Update the choice selection to use circular layout
+  const renderChoices = () => {
+    if (!isAtChoicePoint) return null;
+
+    return (
+      <View style={styles.choicesOverlay}>
+        <Text style={styles.genresTitle}>Choices</Text>
+
+        {/* Pink circle with Flow text */}
+        <View style={styles.circleContainer}>
+          {/* Main pink circle */}
+          <LinearGradient
+            colors={['#FF3366', '#FF0066']}
+            style={styles.pinkCircle}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+
+          {/* Center Flow text */}
+          <View style={styles.flowCircle}>
+            <Text style={styles.flowText}>Decide</Text>
+          </View>
+
+          {/* Story choices instead of music genres */}
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.rockPosition]}
+            onPress={() => {
+              const choice = availableChoices[0];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[0] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="sword" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Fight</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.kpopPosition]}
+            onPress={() => {
+              const choice = availableChoices[1];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[1] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="run-fast" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Run Away</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.popPosition]}
+            onPress={() => {
+              const choice = availableChoices[2];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[2] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="chat" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Talk</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.rnbPosition]}
+            onPress={() => {
+              const choice = availableChoices[3];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[3] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="hand-peace" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Help</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.altPosition]}
+            onPress={() => {
+              const choice = availableChoices[4];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[4] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="eye" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Observe</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.genreItem, styles.rapPosition]}
+            onPress={() => {
+              const choice = availableChoices[5];
+              if (choice && !isProcessingChoice) {
+                handleSelectChoice(choice);
+              }
+            }}
+            disabled={!availableChoices[5] || isProcessingChoice}
+          >
+            <MaterialCommunityIcons 
+              name="flashlight" 
+              size={24} 
+              color="white" 
+              style={styles.genreIcon}
+            />
+            <Text style={styles.genreText}>Investigate</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* More favorites at bottom - changed text to reflect story context */}
+        <View style={styles.favoritesContainer}>
+          <View style={styles.favoriteButtons}>
+            <View style={styles.whiteButton}>
+              <MaterialCommunityIcons name="star-outline" size={22} color="black" />
+            </View>
+            <View style={styles.purpleButton}>
+              <MaterialCommunityIcons name="heart" size={22} color="white" />
+            </View>
+          </View>
+          <Text style={styles.favoritesText}>More options</Text>
+        </View>
+      </View>
+    );
+  };
+
+  // Update the karma display to use defined styles
+  const renderKarmaDisplay = () => {
+    // First check if selectedChoice exists and is an object
+    if (!selectedChoice || typeof selectedChoice !== 'object') return null;
+    
+    // Then safely cast to StoryChoiceWithKarma
+    const choice = selectedChoice as StoryChoiceWithKarma;
+    if (!choice.karmaImpact) return null;
+
+    return (
+      <View style={styles.bottomActions}>
+        <MaterialCommunityIcons
+          name={choice.karmaImpact.type === KarmaType.GOOD ? "heart" : "heart-broken"}
+          size={16}
+          color={choice.karmaImpact.type === KarmaType.GOOD ? "#32CD32" : "#FF4500"}
+        />
+        <Text style={styles.karmaText}>
+          {Math.abs(choice.karmaImpact.value || 0)}
+        </Text>
+      </View>
+    );
+  };
+
   // Main render
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerShown: false,
-        }}
-      />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" />
       
-      {/* Main Story View (when not loading or error) */}
-      {!isProcessingChoice && !state.error && (
-        <>
-          {/* Story title at top */}
-          <View style={styles.titleContainer}>
-            <Typography variant="h6" style={styles.storyTitle}>
-              Chapter 1: The Forest's Edge
-            </Typography>
-          </View>
-        
-          {/* Story progress timeline */}
-          <View style={styles.timelineContainer}>
-            <View style={styles.timelineTrack}>
-              <View style={styles.timelineProgress} />
-              
-              {/* Milestone markers */}
-              <View style={[styles.timelineDot, styles.timelineDotActive]}>
-                <View style={styles.timelineDotInner} />
-              </View>
-              
-              <View style={[styles.timelineDot, styles.timelineDotUpcoming, {left: '33%'}]}>
-                <View style={styles.timelineDotInnerEmpty} />
-              </View>
-              
-              <View style={[styles.timelineDot, styles.timelineDotUpcoming, {left: '66%'}]}>
-                <View style={styles.timelineDotInnerEmpty} />
-              </View>
-              
-              <View style={[styles.timelineDot, styles.timelineDotUpcoming, {right: 0}]}>
-                <View style={styles.timelineDotInnerEmpty} />
-              </View>
-            </View>
-          </View>
-          
-          {/* Floating pause button when story is playing */}
-          {audioReady && isPlaying && (
-            <TouchableOpacity 
-              style={styles.floatingPauseButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                togglePlaybackWithFeedback();
-              }}
-              accessibilityLabel={isPaused ? "Play Kokoro TTS audio" : "Pause Kokoro TTS audio"}
-            >
-              <Ionicons 
-                name={isPaused ? "play" : "pause"} 
-                size={24} 
-                color="#FFFFFF" 
-              />
-            </TouchableOpacity>
-          )}
-          
-          {/* Main content area */}
-          <View style={styles.content}>
-            {/* Karma indicator (if karma system is active) */}
-            {state.userSettings.showKarmaChanges && (
-              <View style={styles.karmaContainer}>
-                <KarmaIndicator score={karmaScore} />
-              </View>
-            )}
-            
-            {/* Initial story start button (if audio not started) */}
-            {!audioReady && (
-              <View style={styles.startOverlay}>
-                <View style={styles.startButtonContainer}>
-                  <ActivityIndicator size="large" color="#FFFFFF" />
-                  <Typography variant="h5" style={styles.startText}>
-                    Preparing your story...
-                  </Typography>
-                  <Typography variant="body1" style={styles.startSubText}>
-                    Narration will begin automatically
-                  </Typography>
-                </View>
-              </View>
-            )}
-            
-            {/* Transcript Area (Conditionally Shown) */}
-            {showTranscript && (
-              <ScrollView style={styles.transcriptArea}>
-                <Typography variant="body2" style={styles.transcriptText}>
-                  {currentAudioSegment?.transcript || 'No transcript available.'}
-                </Typography>
-              </ScrollView>
-            )}
-            
-            {/* Loading Next Segment Indicator */}
-            {isLoadingNextSegment && (
-              <View style={styles.loadingNextContainer}>
-                <ActivityIndicator size="large" color="#FFFFFF" />
-                <Typography variant="body2" style={styles.loadingNextText}>
-                  Loading next part of the story...
-                </Typography>
-              </View>
-            )}
-            
-            {/* Audio Status Indicator with Waveform - cleaner design */}
-            {isPlaying && !isAtChoicePoint && !isPaused && (
-              <View style={styles.audioStatusContainer}>
-                <Animated.View style={{
-                  transform: [{ scale: audioFeedbackAnim }]
-                }}>
-                  <Ionicons name="volume-high" size={18} color="#00CED1" />
-                </Animated.View>
-                <Typography variant="caption" style={styles.audioStatusText}>
-                  Narrating story
-                </Typography>
-                
-                {/* Animated Waveform Visualization */}
-                <View style={styles.waveformContainer}>
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <SmallWaveformBar key={`wave-${index}`} index={index} totalBars={10} isPlaying={isPlaying && !isPaused} />
-                  ))}
-                </View>
-              </View>
-            )}
-            
-            {/* Full Screen Waveform Visualization - centralized and more mesmerizing */}
-            <View style={styles.fullScreenWaveform}>
-              {Array.from({ length: 15 }).map((_, i) => (
-                <WaveformBar 
-                  key={`waveform-${i}`} 
-                  index={i} 
-                  totalBars={15} 
-                  audioLevel={audioStatus.level} 
-                />
-              ))}
-            </View>
-          </View>
-          
-          {/* Bottom Control Area */}
-          <View style={styles.controlArea}>
-            {/* Audio Controls */}
-            <View style={[styles.audioControlsContainer, isAtChoicePoint ? { marginBottom: 16 } : {}]}>
-              <View style={styles.audioControlsInner}>
-                <ProgressBar 
-                  currentTime={playbackState.currentTime}
-                  duration={playbackState.duration}
-                  onSeek={seekToPosition}
-                />
-                <AudioControls
-                  isPlaying={isPlaying}
-                  isPaused={isPaused}
-                  onPausePlay={togglePlaybackWithFeedback}
-                  onRewind={rewindAudio}
-                  onFastForward={fastForwardAudio}
-                  disabled={!audioReady}
-                />
-              </View>
-            </View>
-            
-            {/* Choice Selection Area - only shown when narrative is complete and at choice point */}
-            {isAtChoicePoint && (
-              <View style={styles.choiceButtonsContainer}>
-                <Typography variant="h6" style={styles.choiceHeader}>
-                  What will you do?
-                </Typography>
-                
-                {availableChoices.map((choice, index) => {
-                  // Create compatible Choice object with actual text
-                  const safeChoice: Choice = {
-                    id: choice.id,
-                    text: choice.choice_text || `Option` // Ensure text property exists
-                  };
-                  
-                  return (
-                    <ChoiceButton
-                      key={choice.id}
-                      choice={safeChoice}
-                      onSelect={handleSelectChoice}
-                      disabled={isProcessingChoice}
-                    />
-                  );
-                })}
-              </View>
-            )}
-            
-            {/* First-time user guidance tooltip */}
-            {showTooltip && (
-              <View style={styles.guidanceTip}>
-                <Typography variant="caption" style={styles.guidanceText}>
-                  Listen to the story with Kokoro TTS, then choose your path below
-                </Typography>
-              </View>
-            )}
-          </View>
-        </>
-      )}
-      
-      {/* Voice input indicator (when active) */}
-      {isVoiceActive && (
-        <Portal>
-          <VoiceInputIndicator 
-            isActive={isVoiceActive} 
-            onCancel={handleCancelVoiceInput} 
-          />
-        </Portal>
-      )}
-
-      {/* Fallback Manual Play Button (if auto-start fails) */}
-      {audioReady && !isPlaying && showManualPlayButton && (
-        <TouchableOpacity
-          style={styles.manualStartButton}
-          onPress={() => {
-            // Provide haptic feedback for better UX
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            
-            // Try normal playback first
-            playAudio();
-            
-            // If that doesn't work after a short delay, use direct narration
-            setTimeout(() => {
-              if (!isPlaying) {
-                console.log('Manual button pressed but normal playback failed, using direct TTS');
-                // Extended immersive introduction for manual start (15 seconds when narrated)
-                const introText = `You find yourself standing at the edge of a vast, ancient forest that seems to breathe with a life of its own. The towering trees stretch their gnarled branches toward the darkening sky, their leaves whispering secrets carried by the wind. The air is thick with the scent of moss, pine, and something otherworldly that you can't quite identify. A narrow, winding path disappears into the shadows between the trees, beckoning you forward. As you take your first step, a distant melody seems to float through the air – perhaps just the wind, or perhaps something more. The forest holds many stories, and yours is about to begin. The choices you make from this moment forward will shape not only your path but who you will become. Take a deep breath, and step into the unknown.`;
-                
-                // Update UI state manually since we removed dispatch
-                // We'll have to rely on the context's internal state management
-                textToSpeech.speak(introText, {
-                  onStart: () => console.log('Manual direct narration started'),
-                  onComplete: () => console.log('Manual direct narration completed')
-                });
-              }
-            }, 500);
-            
-            // Zoom in background slightly when starting
-            Animated.timing(backgroundZoom, {
-              toValue: 1.05,
-              duration: 1000,
-              useNativeDriver: true
-            }).start();
-          }}
-          accessibilityLabel="Begin the story manually"
-        >
-          <View style={styles.manualStartButtonInner}>
-            <Ionicons name="play" size={30} color="#FFFFFF" />
-            <Typography variant="body1" style={styles.manualStartText}>
-              Tap to start narration
-            </Typography>
-          </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>STORY</Text>
+          <Text style={styles.storyTitle} numberOfLines={1}>
+            {story?.title || 'Loading...'}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.castButton}>
+          <Ionicons name="radio-outline" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+      
+      {/* Main Content - removed HQ badge and Lyrics button */}
+      <View style={styles.content}>
+        <Image 
+          source={require('../../../assets/images/Netflix iOS 91.png')}
+          style={styles.coverImage}
+          resizeMode="contain"
+        />
+      </View>
+      
+      {/* Bottom Controls */}
+      <View style={styles.bottomControls}>
+        <View style={styles.progressContainer}>
+          <Text style={styles.timeText}>
+            {formatTime(playbackState.currentTime)}
+          </Text>
+          <Pressable style={styles.progressBarContainer} onPress={handleProgressPress}>
+            <View style={styles.progressBarBg}>
+              <View 
+                style={[
+                  styles.progressBarFg, 
+                  { width: `${Math.min(100, Math.max(0, Math.floor((playbackState.currentTime / (playbackState.duration || 1)) * 100)))}%` }
+                ]} 
+              />
+            </View>
+          </Pressable>
+          <Text style={styles.timeText}>
+            {formatTime(playbackState.duration - playbackState.currentTime)}
+          </Text>
+        </View>
+        
+        <View style={styles.controls}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => rewindAudio(10)}
+            disabled={isLoading}
+          >
+            <Ionicons name="play-back" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.playButton}
+            onPress={togglePlaybackWithFeedback}
+            disabled={isLoading}
+          >
+            <Ionicons 
+              name={isPlaying && !isPaused ? "pause" : "play"} 
+              size={40} 
+              color="#FFFFFF" 
+            />
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={() => fastForwardAudio(10)}
+            disabled={isLoading}
+          >
+            <Ionicons name="play-forward" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.bottomActions}>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="share-outline" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="heart-outline" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </View>
+      
+      {isAtChoicePoint && renderChoices()}
+      {selectedChoice && renderKarmaDisplay()}
+      {isVoiceActive && (
+        <VoiceInputIndicator 
+          isActive={isVoiceActive} 
+          onCancel={handleCancelVoiceInput} 
+        />
       )}
     </SafeAreaView>
   );
-}
+};
 
-const styles = StyleSheet.create({
+export default StoryReadScreen;
+
+// Fix the styles object
+const styles = StyleSheet.create<Styles>({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    paddingBottom: 60,
   },
-  content: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  contentContainer: {
-    flexGrow: 1,
-    padding: 16,
-    backgroundColor: '#000000',
-  },
-  titleContainer: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
-    zIndex: 10,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1,
+    opacity: 0.7,
   },
   storyTitle: {
     color: '#FFFFFF',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    fontSize: 18,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  floatingPauseButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  startOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  startButtonContainer: {
-    alignItems: 'center',
-  },
-  startText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    marginBottom: 8,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  startSubText: {
-    color: '#FFFFFF',
     fontSize: 16,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    fontWeight: '600',
+    marginTop: 4,
   },
-  transcriptArea: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 8,
-    padding: 16,
-    marginVertical: 8,
-    maxHeight: 200,
-  },
-  transcriptText: {
-    color: '#FFFFFF',
-  },
-  loadingNextContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    zIndex: 20,
-  },
-  loadingNextText: {
-    color: '#FFFFFF',
-    marginTop: 16,
-  },
-  audioStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'center',
-    marginTop: 12,
-    maxWidth: '60%',
-  },
-  audioStatusText: {
-    color: '#FFFFFF',
-    marginLeft: 6,
-    fontSize: 12,
-  },
-  controlArea: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    zIndex: 10,
-  },
-  audioControlsContainer: {
-    marginBottom: 16,
-    marginTop: 8,
-    alignItems: 'center',
-    width: '100%',
-  },
-  audioControlsInner: {
-    width: '95%', // Fixed width for inner container
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: 12,
+  castButton: {
     padding: 8,
   },
-  choiceButtonsContainer: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 8,
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 24,
+  },
+  coverImage: {
+    width: '100%',
+    height: undefined,
+    aspectRatio: 1,
     borderRadius: 8,
   },
-  choiceHeader: {
+  hqBadge: {
+    position: 'absolute',
+    top: '15%',
+    right: 40,
+    backgroundColor: '#E50914',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  hqText: {
     color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: 16,
-    fontWeight: 'bold',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 12,
+    fontWeight: '600',
   },
-  guidanceTip: {
-    alignItems: 'center',
-    marginTop: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    alignSelf: 'center',
-  },
-  guidanceText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-  },
-  waveformContainer: {
-    height: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-  waveformBar: {
-    width: 1,
-    marginHorizontal: 2,
-    borderRadius: 1,
-  },
-  fullScreenWaveform: {
+  lyricsButton: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 3, // Higher z-index to be more visible
-    pointerEvents: 'none', // Don't intercept touch events
-    justifyContent: 'center', // Center vertically
-    alignItems: 'center', // Center horizontally
-  },
-  waveformInnerContainer: {
-    position: 'absolute',
-    width: '90%', // Wider to fill more of the screen
-    height: '80%', // Taller to be more prominent
-    top: '10%', // Position from top for centering
-    alignSelf: 'center', // Center horizontally
-  },
-  fullScreenWaveformBar: {
-    position: 'absolute',
-    bottom: '10%', // Start higher from the bottom
-    width: 2.5, // Slightly thicker bars
-  },
-  manualStartButton: {
-    position: 'absolute',
-    bottom: 20,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
-    borderRadius: 25,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.6,
-    shadowRadius: 5,
-    elevation: 5,
-    zIndex: 100,
-  },
-  manualStartButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  manualStartText: {
-    color: '#FFFFFF',
-    marginLeft: 10,
-  },
-  timelineContainer: {
-    padding: 16,
-    zIndex: 10,
-  },
-  timelineTrack: {
-    height: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  timelineProgress: {
-    height: '100%',
-    backgroundColor: '#5B76CB',
-    borderRadius: 10,
-    width: '15%',
-  },
-  timelineDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    position: 'absolute',
-    top: 4,
-    marginTop: 0,
-    marginLeft: -6,
-    left: 0,
-  },
-  timelineDotActive: {
-    backgroundColor: '#5B76CB',
-  },
-  timelineDotUpcoming: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  timelineDotInner: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#FFFFFF',
-    position: 'absolute',
-    top: 4,
-    left: 4,
-  },
-  timelineDotInnerEmpty: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-    position: 'absolute',
-    top: 4,
-    left: 4,
-  },
-  currentMilestoneContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  milestoneIcon: {
-    marginBottom: 4,
-  },
-  milestoneText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  nextMilestoneContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  nextMilestoneText: {
-    color: 'rgba(255,255,255,0.6)',
-  },
-  karmaIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  voiceIndicatorContainer: {
-    position: 'absolute',
-    bottom: 100,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  voiceIndicator: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  voiceListeningText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginTop: 10,
-  },
-  voiceCancelButton: {
-    marginTop: 16,
+    right: 40,
+    bottom: '15%',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 16,
+    borderRadius: 20,
   },
-  voiceCancelText: {
+  lyricsButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  bottomControls: {
+    paddingHorizontal: 24,
+    paddingBottom: 36,
   },
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  timeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    opacity: 0.7,
+    minWidth: 45,
   },
   progressBarContainer: {
     flex: 1,
@@ -1710,66 +1701,242 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 2,
-    overflow: 'hidden',
   },
   progressBarFg: {
     height: '100%',
     backgroundColor: '#E50914',
     borderRadius: 2,
   },
-  progressBarTouch: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  timeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    minWidth: 45,
-  },
-  audioControls: {
+  controls: {
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  audioButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 8,
+    marginBottom: 24,
   },
   playButton: {
     width: 64,
     height: 64,
     borderRadius: 32,
     backgroundColor: '#E50914',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 32,
   },
-  choiceButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+  bottomActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: 32,
+  },
+  actionButton: {
+    padding: 8,
+  },
+  progressBarTouch: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+  audioControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    marginVertical: 16,
+  },
+  audioButton: {
+    padding: 12,
+    marginHorizontal: 8,
+  },
+  choiceButton: {
+    width: 64,
+    height: 64,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   choiceButtonDisabled: {
     opacity: 0.5,
   },
   choiceText: {
     color: '#FFFFFF',
+    fontSize: 16,
     flex: 1,
-    marginRight: 12,
   },
   karmaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: 8,
   },
   karmaText: {
     color: '#FFFFFF',
+    fontSize: 14,
     marginLeft: 4,
   },
+  karmaIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  voiceIndicatorContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  voiceIndicator: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E50914',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceListeningText: {
+    color: '#FFFFFF',
+    marginTop: 8,
+    fontSize: 14,
+  },
+  voiceCancelButton: {
+    marginTop: 16,
+    padding: 8,
+  },
+  voiceCancelText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  waveformContainer: {
+    width: '100%',
+    height: 60,
+    position: 'relative',
+  },
+  waveformBar: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 1,
+  },
+  karmaBar: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  choicesOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#0A0A0A',
+    alignItems: 'center',
+  },
+  genresTitle: {
+    fontSize: 42,
+    fontWeight: '700',
+    color: 'white',
+    marginTop: '15%',
+    marginBottom: 40,
+  },
+  circleContainer: {
+    width: width * 0.8,
+    height: width * 0.8,
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pinkCircle: {
+    width: '100%',
+    height: '100%',
+    borderRadius: width * 0.4,
+    position: 'absolute',
+  },
+  flowCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flowText: {
+    color: 'white',
+    fontSize: 32,
+    fontWeight: '700',
+  },
+  genreItem: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 60,
+  },
+  genreIcon: {
+    textAlign: 'center',
+    marginBottom: 5,
+  },
+  genreText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  // Position styles for each genre
+  rockPosition: {
+    top: '15%',
+    left: '25%',
+  },
+  kpopPosition: {
+    top: '10%',
+    alignSelf: 'center',
+  },
+  popPosition: {
+    top: '15%',
+    right: '25%',
+  },
+  rnbPosition: {
+    top: '50%',
+    right: '10%',
+  },
+  altPosition: {
+    bottom: '15%',
+    alignSelf: 'center',
+  },
+  rapPosition: {
+    top: '50%',
+    left: '10%',
+  },
+  favoritesContainer: {
+    position: 'absolute',
+    bottom: '15%',
+    alignItems: 'center',
+  },
+  favoriteButtons: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  whiteButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  purpleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#9C27B0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -12,
+    zIndex: 2,
+  },
+  favoritesText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
 }); 
-
-export default StoryReadScreen; 
