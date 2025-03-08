@@ -98,7 +98,7 @@ const ProgressBar = ({ currentTime, duration, onSeek }) => {
       <View style={styles.progressBarContainer}>
         <View style={styles.progressBarBg}>
           <View style={[styles.progressBarFg, { width: `${Math.floor(progress * 100)}%` }]} />
-        </View>
+          </View>
         <Pressable 
           style={styles.progressBarTouch} 
           onPress={(e) => {
@@ -109,8 +109,8 @@ const ProgressBar = ({ currentTime, duration, onSeek }) => {
             // Ensure seekPosition is valid before calling onSeek
             if (Number.isFinite(seekPosition)) {
               seekPosition = Math.floor(Math.max(0, Math.min(seekPosition, safeDuration)));
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onSeek(seekPosition);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onSeek(seekPosition);
             }
           }}
         />
@@ -173,18 +173,18 @@ const ChoiceButton = React.memo(({
 }: { 
   choice: StoryChoice; 
   onSelect: (choice: StoryChoice) => void; 
-  disabled: boolean;
+  disabled: boolean; 
 }) => {
   return (
-    <TouchableOpacity
+      <TouchableOpacity 
       style={[styles.choiceButton, disabled && styles.choiceButtonDisabled]}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         onSelect(choice);
       }}
-      disabled={disabled}
+        disabled={disabled}
     >
-      <Typography variant="body1" style={styles.choiceText}>
+            <Typography variant="body1" style={styles.choiceText}>
         {choice.choice_text}
       </Typography>
       {(choice as StoryChoiceWithKarma).karmaImpact && (
@@ -196,10 +196,10 @@ const ChoiceButton = React.memo(({
           />
           <Typography variant="caption" style={styles.karmaText}>
             {Math.abs((choice as StoryChoiceWithKarma).karmaImpact?.value || 0)}
-          </Typography>
-        </View>
+            </Typography>
+          </View>
       )}
-    </TouchableOpacity>
+      </TouchableOpacity>
   );
 });
 
@@ -1440,10 +1440,10 @@ export const StoryReadScreen = () => {
                 }
               ]} 
             />
-          </View>
+              </View>
           <Text style={styles.countdownText}>{timeRemaining}s</Text>
-        </View>
-        
+          </View>
+          
         {/* Vertical list of choices */}
         <ScrollView 
           style={styles.choicesScrollView}
@@ -1462,12 +1462,12 @@ export const StoryReadScreen = () => {
                   { transform: [{ scale: isSelected ? buttonScale : 1 }] }
                 ]}
               >
-                <TouchableOpacity 
+            <TouchableOpacity 
                   style={[
                     styles.choiceButton,
                     selectedButtonIndex === index && styles.choiceButtonSelected
                   ]}
-                  onPress={() => {
+              onPress={() => {
                     if (isActive && !isProcessingChoice) {
                       setSelectedButtonIndex(index);
                       
@@ -1484,14 +1484,14 @@ export const StoryReadScreen = () => {
                     <MaterialCommunityIcons 
                       name={choice.icon as any}
                       size={28} 
-                      color="#FFFFFF"
-                    />
-                  </View>
+                color="#FFFFFF" 
+              />
+              </View>
                   
                   <View style={styles.choiceTextContainer}>
                     <Text style={styles.choiceText}>{choice.label}</Text>
                     <Text style={styles.choiceDescription}>{choice.description}</Text>
-                  </View>
+                </View>
                   
                   <MaterialCommunityIcons 
                     name="chevron-right" 
@@ -1503,7 +1503,7 @@ export const StoryReadScreen = () => {
               </Animated.View>
             );
           })}
-        </ScrollView>
+              </ScrollView>
         
         {/* Feedback badge (appears after selection) */}
         {isProcessingChoice && selectedChoice && (
@@ -1514,8 +1514,8 @@ export const StoryReadScreen = () => {
               color="#00FF00"
             />
             <Text style={styles.feedbackText}>Choice Confirmed</Text>
-          </View>
-        )}
+              </View>
+            )}
       </View>
     );
   };
@@ -1539,7 +1539,7 @@ export const StoryReadScreen = () => {
         <Text style={styles.karmaText}>
           {Math.abs(choice.karmaImpact.value || 0)}
         </Text>
-      </View>
+                </View>
     );
   };
 
@@ -1558,7 +1558,7 @@ export const StoryReadScreen = () => {
           <Text style={styles.storyTitle} numberOfLines={1}>
             {story?.title || 'Loading...'}
           </Text>
-        </View>
+              </View>
         <TouchableOpacity style={styles.castButton}>
           <Ionicons name="radio-outline" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -1574,8 +1574,8 @@ export const StoryReadScreen = () => {
           />
         )}
         {isAtChoicePoint && renderChoices()}
-      </View>
-      
+          </View>
+          
       {/* Bottom Controls */}
       <View style={styles.bottomControls}>
         <View style={styles.progressContainer}>
@@ -1589,14 +1589,14 @@ export const StoryReadScreen = () => {
                   styles.progressBarFg, 
                   { width: `${Math.min(100, Math.max(0, Math.floor((playbackState.currentTime / (playbackState.duration || 1)) * 100)))}%` }
                 ]} 
-              />
-            </View>
+                />
+              </View>
           </Pressable>
           <Text style={styles.timeText}>
             {formatTime(playbackState.duration - playbackState.currentTime)}
           </Text>
-        </View>
-        
+            </View>
+            
         <View style={styles.controls}>
           <TouchableOpacity 
             style={styles.actionButton} 
@@ -1625,7 +1625,7 @@ export const StoryReadScreen = () => {
           >
             <Ionicons name="play-forward" size={32} color="#FFFFFF" />
           </TouchableOpacity>
-        </View>
+              </View>
         
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.actionButton}>
@@ -1637,15 +1637,15 @@ export const StoryReadScreen = () => {
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-        </View>
-      </View>
+              </View>
+          </View>
       
       {selectedChoice && renderKarmaDisplay()}
       {isVoiceActive && (
-        <VoiceInputIndicator 
-          isActive={isVoiceActive} 
-          onCancel={handleCancelVoiceInput} 
-        />
+          <VoiceInputIndicator 
+            isActive={isVoiceActive} 
+            onCancel={handleCancelVoiceInput} 
+          />
       )}
     </SafeAreaView>
   );
