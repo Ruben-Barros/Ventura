@@ -1297,6 +1297,19 @@ export const StoryReadScreen = () => {
   // Background animation ref
   const forestAnimation = useRef(null);
 
+  // Add back the handleProgressPress function
+  const handleProgressPress = (e: any) => {
+    const touchX = e.nativeEvent.locationX;
+    const barWidth = width - 120;
+    let seekPosition = (touchX / barWidth) * playbackState.duration;
+    
+    if (Number.isFinite(seekPosition)) {
+      seekPosition = Math.floor(Math.max(0, Math.min(seekPosition, playbackState.duration)));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      seekToPosition(seekPosition);
+    }
+  };
+
   // Hooks for the choice UI that were previously inside renderChoices
   const [timeRemaining, setTimeRemaining] = useState(10);
   const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
