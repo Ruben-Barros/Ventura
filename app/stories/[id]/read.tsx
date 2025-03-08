@@ -1297,128 +1297,115 @@ export const StoryReadScreen = () => {
   // Background animation ref
   const forestAnimation = useRef(null);
 
-  // Update the progress bar press handler
-  const handleProgressPress = (e: any) => {
-    const touchX = e.nativeEvent.locationX;
-    const barWidth = width - 120;
-    let seekPosition = (touchX / barWidth) * playbackState.duration;
-    
-    if (Number.isFinite(seekPosition)) {
-      seekPosition = Math.floor(Math.max(0, Math.min(seekPosition, playbackState.duration)));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      seekToPosition(seekPosition);
+  // Hooks for the choice UI that were previously inside renderChoices
+  const [timeRemaining, setTimeRemaining] = useState(10);
+  const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  
+  // Story-specific narrative context (example titles)
+  const storyContext = {
+    title: "The Forest's Edge",
+    question: "What will you do next?"
+  };
+  
+  // Narrative-specific choices with contextual labels
+  const narrativeChoices = [
+    { 
+      id: 0, 
+      icon: 'sword', 
+      label: 'Confront the Whispering Shadow',
+      description: 'Take a stand against the unknown presence' 
+    },
+    { 
+      id: 1, 
+      icon: 'run-fast', 
+      label: 'Flee Through the Misty Path',
+      description: 'Seek safety in the depths of the forest' 
+    },
+    { 
+      id: 2, 
+      icon: 'chat', 
+      label: 'Call Out to the Presence',
+      description: 'Attempt to communicate with whatever lurks nearby' 
+    },
+    { 
+      id: 3, 
+      icon: 'hand-peace', 
+      label: 'Offer a Sign of Peace',
+      description: 'Show that you mean no harm' 
+    },
+    { 
+      id: 4, 
+      icon: 'eye', 
+      label: 'Search the Surrounding Area',
+      description: 'Look for clues or hidden paths' 
+    },
+    { 
+      id: 5, 
+      icon: 'flashlight', 
+      label: 'Investigate the Strange Sounds',
+      description: 'Determine the source of the disturbance' 
+    }
+  ];
+  
+  // Helper function for time expiration - moved outside renderChoices
+  const handleTimeExpired = () => {
+    // Select the "observe" option (usually the most neutral)
+    const defaultChoice = availableChoices[4];
+    if (defaultChoice) {
+      handleSelectChoice(defaultChoice);
     }
   };
+  
+  // Set up countdown timer effect - moved outside renderChoices
+  useEffect(() => {
+    if (!isAtChoicePoint) return;
+    
+    // Reset timer when choices become available
+    setTimeRemaining(10);
+    
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 0) {
+          // Auto-select a neutral option when time expires
+          handleTimeExpired();
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [isAtChoicePoint, availableChoices]);
+  
+  // Set up effect for button animation that runs when selectedButtonIndex changes
+  useEffect(() => {
+    if (selectedButtonIndex !== null) {
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 1.05,
+          duration: 150,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.ease)
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease)
+        })
+      ]).start(() => {
+        setSelectedButtonIndex(null);
+      });
+    }
+  }, [selectedButtonIndex, buttonScale]);
 
-  // First, update the renderChoices function with the new Netflix-inspired vertical list design
   const renderChoices = () => {
     if (!isAtChoicePoint) return null;
-
-    // Story-specific narrative context (example titles)
-    const storyContext = {
-      title: "The Forest's Edge",
-      question: "What will you do next?"
-    };
     
-    // Narrative-specific choices with contextual labels
-    const narrativeChoices = [
-      { 
-        id: 0, 
-        icon: 'sword', 
-        label: 'Confront the Whispering Shadow',
-        description: 'Take a stand against the unknown presence' 
-      },
-      { 
-        id: 1, 
-        icon: 'run-fast', 
-        label: 'Flee Through the Misty Path',
-        description: 'Seek safety in the depths of the forest' 
-      },
-      { 
-        id: 2, 
-        icon: 'chat', 
-        label: 'Call Out to the Presence',
-        description: 'Attempt to communicate with whatever lurks nearby' 
-      },
-      { 
-        id: 3, 
-        icon: 'hand-peace', 
-        label: 'Offer a Sign of Peace',
-        description: 'Show that you mean no harm' 
-      },
-      { 
-        id: 4, 
-        icon: 'eye', 
-        label: 'Search the Surrounding Area',
-        description: 'Look for clues or hidden paths' 
-      },
-      { 
-        id: 5, 
-        icon: 'flashlight', 
-        label: 'Investigate the Strange Sounds',
-        description: 'Determine the source of the disturbance' 
-      }
-    ];
-
-    // Timer state for urgency (10 seconds countdown)
-    const [timeRemaining, setTimeRemaining] = useState(10);
+    // Calculate timer progress here (not using any hooks)
     const timerProgress = timeRemaining / 10; // 0 to 1 scale
-
-    // Set up countdown timer
-    useEffect(() => {
-      if (!isAtChoicePoint) return;
-      
-      const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 0) {
-            // Auto-select a neutral option when time expires
-            handleTimeExpired();
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-      return () => clearInterval(timer);
-    }, [isAtChoicePoint]);
-
-    // Handle time expiration
-    const handleTimeExpired = () => {
-      // Select the "observe" option (usually the most neutral)
-      const defaultChoice = availableChoices[4];
-      if (defaultChoice) {
-        handleSelectChoice(defaultChoice);
-      }
-    };
-
-    // Animation value for button press effect
-    const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
-    
-    // Create a single animation scale ref for all buttons
-    const buttonScale = useRef(new Animated.Value(1)).current;
-    
-    // Set up effect for button animation that runs when selectedButtonIndex changes
-    useEffect(() => {
-      if (selectedButtonIndex !== null) {
-        Animated.sequence([
-          Animated.timing(buttonScale, {
-            toValue: 1.05,
-            duration: 150,
-            useNativeDriver: true,
-            easing: Easing.out(Easing.ease)
-          }),
-          Animated.timing(buttonScale, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease)
-          })
-        ]).start(() => {
-          setSelectedButtonIndex(null);
-        });
-      }
-    }, [selectedButtonIndex]);
     
     return (
       <View style={styles.choicesContainer}>
@@ -1440,10 +1427,10 @@ export const StoryReadScreen = () => {
                 }
               ]} 
             />
-              </View>
-          <Text style={styles.countdownText}>{timeRemaining}s</Text>
           </View>
-          
+          <Text style={styles.countdownText}>{timeRemaining}s</Text>
+        </View>
+        
         {/* Vertical list of choices */}
         <ScrollView 
           style={styles.choicesScrollView}
@@ -1462,12 +1449,12 @@ export const StoryReadScreen = () => {
                   { transform: [{ scale: isSelected ? buttonScale : 1 }] }
                 ]}
               >
-            <TouchableOpacity 
+                <TouchableOpacity 
                   style={[
                     styles.choiceButton,
                     selectedButtonIndex === index && styles.choiceButtonSelected
                   ]}
-              onPress={() => {
+                  onPress={() => {
                     if (isActive && !isProcessingChoice) {
                       setSelectedButtonIndex(index);
                       
@@ -1484,14 +1471,14 @@ export const StoryReadScreen = () => {
                     <MaterialCommunityIcons 
                       name={choice.icon as any}
                       size={28} 
-                color="#FFFFFF" 
-              />
-              </View>
+                      color="#FFFFFF"
+                    />
+                  </View>
                   
                   <View style={styles.choiceTextContainer}>
                     <Text style={styles.choiceText}>{choice.label}</Text>
                     <Text style={styles.choiceDescription}>{choice.description}</Text>
-                </View>
+                  </View>
                   
                   <MaterialCommunityIcons 
                     name="chevron-right" 
@@ -1503,7 +1490,7 @@ export const StoryReadScreen = () => {
               </Animated.View>
             );
           })}
-              </ScrollView>
+        </ScrollView>
         
         {/* Feedback badge (appears after selection) */}
         {isProcessingChoice && selectedChoice && (
@@ -1514,8 +1501,8 @@ export const StoryReadScreen = () => {
               color="#00FF00"
             />
             <Text style={styles.feedbackText}>Choice Confirmed</Text>
-              </View>
-            )}
+          </View>
+        )}
       </View>
     );
   };
@@ -1539,7 +1526,7 @@ export const StoryReadScreen = () => {
         <Text style={styles.karmaText}>
           {Math.abs(choice.karmaImpact.value || 0)}
         </Text>
-                </View>
+      </View>
     );
   };
 
@@ -1558,7 +1545,7 @@ export const StoryReadScreen = () => {
           <Text style={styles.storyTitle} numberOfLines={1}>
             {story?.title || 'Loading...'}
           </Text>
-              </View>
+        </View>
         <TouchableOpacity style={styles.castButton}>
           <Ionicons name="radio-outline" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -1574,8 +1561,8 @@ export const StoryReadScreen = () => {
           />
         )}
         {isAtChoicePoint && renderChoices()}
-          </View>
-          
+      </View>
+      
       {/* Bottom Controls */}
       <View style={styles.bottomControls}>
         <View style={styles.progressContainer}>
@@ -1589,14 +1576,14 @@ export const StoryReadScreen = () => {
                   styles.progressBarFg, 
                   { width: `${Math.min(100, Math.max(0, Math.floor((playbackState.currentTime / (playbackState.duration || 1)) * 100)))}%` }
                 ]} 
-                />
-              </View>
+              />
+            </View>
           </Pressable>
           <Text style={styles.timeText}>
             {formatTime(playbackState.duration - playbackState.currentTime)}
           </Text>
-            </View>
-            
+        </View>
+        
         <View style={styles.controls}>
           <TouchableOpacity 
             style={styles.actionButton} 
@@ -1625,7 +1612,7 @@ export const StoryReadScreen = () => {
           >
             <Ionicons name="play-forward" size={32} color="#FFFFFF" />
           </TouchableOpacity>
-              </View>
+        </View>
         
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.actionButton}>
@@ -1637,15 +1624,15 @@ export const StoryReadScreen = () => {
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="ellipsis-horizontal" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-              </View>
-          </View>
+        </View>
+      </View>
       
       {selectedChoice && renderKarmaDisplay()}
       {isVoiceActive && (
-          <VoiceInputIndicator 
-            isActive={isVoiceActive} 
-            onCancel={handleCancelVoiceInput} 
-          />
+        <VoiceInputIndicator 
+          isActive={isVoiceActive} 
+          onCancel={handleCancelVoiceInput} 
+        />
       )}
     </SafeAreaView>
   );
