@@ -1,6 +1,7 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { textToSpeech } from '../ai/textToSpeech';
+import SoundAssets from '../../assets/sounds';
 
 // Emotion types for narration styling using SSML
 export enum EmotionType {
@@ -29,22 +30,22 @@ interface AudioEffectConfig {
   fadeOutDuration?: number;
 }
 
-// Sound asset mapping - React Native requires static strings for require()
+// Sound asset mapping - using centralized assets
 const SOUND_ASSETS = {
   // UI Sounds
-  INTRO_CHIME: require('../../assets/sounds/intro-chime.mp3'),
-  CHOICE_PROMPT: require('../../assets/sounds/choice-bell.mp3'),
-  CHOICE_SELECT: require('../../assets/sounds/choice-select.mp3'),
+  INTRO_CHIME: SoundAssets.introChime,
+  CHOICE_PROMPT: SoundAssets.choiceBell,
+  CHOICE_SELECT: SoundAssets.choiceSelect,
   
   // Ambient Sounds
-  FOREST_AMBIANCE: require('../../assets/sounds/forest-ambiance.mp3'),
-  CAVE_AMBIANCE: require('../../assets/sounds/cave-ambiance.mp3'),
-  VILLAGE_AMBIANCE: require('../../assets/sounds/village-ambiance.mp3'),
+  FOREST_AMBIANCE: SoundAssets.forestAmbiance,
+  CAVE_AMBIANCE: SoundAssets.caveAmbiance,
+  VILLAGE_AMBIANCE: SoundAssets.villageAmbiance,
   
   // Effects
-  FOOTSTEPS: require('../../assets/sounds/footsteps.mp3'),
-  DOOR_OPEN: require('../../assets/sounds/door-open.mp3'),
-  MAGIC_SPELL: require('../../assets/sounds/magic-spell.mp3'),
+  FOOTSTEPS: SoundAssets.footsteps,
+  DOOR_OPEN: SoundAssets.doorOpen,
+  MAGIC_SPELL: SoundAssets.magicSpell,
 };
 
 class KokoroAudioService {
