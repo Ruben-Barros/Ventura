@@ -463,26 +463,11 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
     getState: () => StoryExperienceState
   ) => async (content: string) => {
     try {
-      console.log('Speaking segment content with length:', content?.length);
+      console.log('Speaking segment content disabled - content length:', content?.length);
       
       // Check if we have pending choices
       const state = getState();
       const hasChoices = state.availableChoices && state.availableChoices.length > 0;
-      
-      // Break the content if we're at a choice point
-      let finalContent = content;
-      
-      if (hasChoices) {
-        console.log('Detected choices are available, preparing content for choice point');
-        // Stop at a natural sentence break before choices
-        const sentences = content.split(/(?<=[.!?])\s+/);
-        
-        // Use just enough sentences to provide context but stop before choices
-        const sentencesToUse = Math.min(sentences.length, Math.max(sentences.length - 2, 1));
-        finalContent = sentences.slice(0, sentencesToUse).join(' ');
-        
-        console.log(`Adjusted content length for choice point: ${finalContent.length} (original: ${content.length})`);
-      }
       
       // Update UI to show playing state
       dispatch({ 
@@ -495,13 +480,16 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
         } 
       });
       
-      // Basic TTS fallback without Kokoro audio enhancements
-      const result = await textToSpeech.speak(finalContent, {
-        onStart: () => {
-          console.log('TTS started speaking segment content');
-        },
-        onComplete: () => {
-          console.log('TTS finished speaking segment content');
+      // AUDIO COMPLETELY DISABLED - just simulate completion after a delay
+      return new Promise<void>(resolve => {
+        console.log('Simulating audio playback (disabled)');
+        
+        // Fire onStart callback
+        console.log('TTS started speaking segment content (simulated)');
+        
+        // Wait a short delay to simulate audio playback
+        setTimeout(() => {
+          console.log('TTS finished speaking segment content (simulated)');
           
           // Show choices immediately when narration finishes if any are available
           if (hasChoices) {
@@ -511,18 +499,11 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
               dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
             }, 300); // Short delay for better flow
           }
-        },
-        onError: (err) => {
-          console.error('TTS error during narration:', err);
-          dispatch({ 
-            type: 'SET_ERROR', 
-            payload: { error: 'Error during narration: ' + String(err) } 
-          });
-        }
+          
+          resolve();
+        }, 1000); // 1 second delay to simulate speech
       });
       
-      console.log('TTS speak call completed with result:', result);
-      return result;
     } catch (error) {
       console.error('Error in speakSegmentContent:', error);
       throw error;

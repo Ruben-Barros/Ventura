@@ -1,357 +1,209 @@
-import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-
-// Audio player for story narration
+/**
+ * DISABLED Audio Player for Story Experience
+ * All audio functionality is completely disabled in this version
+ */
 class StoryAudioPlayer {
-  private sound: Audio.Sound | null = null;
   private isPlaying: boolean = false;
   private isPaused: boolean = false;
-  private duration: number = 0;
   private position: number = 0;
-
-  // Event listeners
-  private onPlaybackStatusUpdate: ((status: Audio.PlaybackStatus) => void) | null = null;
-  private onPlaybackFinished: (() => void) | null = null;
-
-  // Initialize the audio player
-  async init() {
-    try {
-      console.log('Initializing audio player and requesting permissions');
-      
-      // Request audio permissions
-      const permissionResponse = await Audio.requestPermissionsAsync();
-      console.log('Audio permission status:', permissionResponse.status);
-      
-      // Set audio mode
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false, // Use speaker
-        allowsRecordingIOS: false,
-      });
-      
-      console.log('Audio mode set successfully');
-    } catch (error) {
-      console.error('Error initializing audio player:', error);
-      throw error;
-    }
+  private duration: number = 0;
+  
+  // Placeholder for callbacks
+  private onPlaybackStatusUpdate: ((status: any) => void) | null = null;
+  private onPlaybackComplete: (() => void) | null = null;
+  
+  constructor() {
+    console.log('Story Audio Player initialized (DISABLED)');
   }
-
-  // Load audio from a URL or local URI
+  
+  /**
+   * Initialize the audio player (stub)
+   */
+  async init(): Promise<void> {
+    console.log('Audio player initialization (DISABLED)');
+    return Promise.resolve();
+  }
+  
+  /**
+   * Load audio from a URI (stub - does nothing)
+   */
   async loadAudio(uri: string): Promise<void> {
-    // Unload any existing audio
-    await this.unloadAudio();
-
-    try {
-      console.log('Starting to load audio from:', uri);
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: false },
-        this.handlePlaybackStatusUpdate
-      );
-      
-      this.sound = sound;
-      const status = await sound.getStatusAsync();
-      
-      if (status.isLoaded) {
-        this.duration = status.durationMillis || 0;
-        console.log('Audio loaded successfully with duration:', this.duration);
-      } else {
-        console.warn('Audio loaded but not in loaded state:', status);
-      }
-      
-      console.log('Audio loading completed for:', uri);
-    } catch (error) {
-      console.error('Error loading audio:', error);
-      throw error;
-    }
-  }
-
-  // Handle status updates during playback
-  private handlePlaybackStatusUpdate = (status: Audio.PlaybackStatus) => {
-    console.log('Audio playback status update:', status);
-    if (status.isLoaded) {
-      this.isPlaying = status.isPlaying;
-      this.isPaused = status.isPlaying === false && status.positionMillis > 0;
-      this.position = status.positionMillis;
-      
-      // Call the external status update callback if provided
-      if (this.onPlaybackStatusUpdate) {
-        this.onPlaybackStatusUpdate(status);
-      }
-      
-      // Check if playback has finished
-      if (status.didJustFinish && this.onPlaybackFinished) {
-        console.log('Audio playback finished');
-        this.onPlaybackFinished();
-      }
-    } else if (status.error) {
-      console.error('Audio playback error:', status.error);
-    }
-  };
-
-  // Start or resume playback
-  async play(): Promise<void> {
-    if (!this.sound) {
-      console.error('Attempted to play audio but no sound is loaded');
-      console.log('AUDIO DEBUG: No sound loaded when attempting to play');
-      return;
-    }
+    console.log('Audio loading disabled - URI:', uri);
+    this.duration = 30000; // Pretend it's a 30 second clip
     
-    try {
-      console.log('Starting audio playback');
-      console.log('AUDIO DEBUG: Setting volume to maximum (1.0) before playing');
-      
-      // Set volume to maximum
-      await this.sound.setVolumeAsync(1.0);
-      
-      // Ensure audio mode is set correctly again just before playing
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false, // Use speaker
-        allowsRecordingIOS: false,
+    // Simulate loading completion
+    if (this.onPlaybackStatusUpdate) {
+      this.onPlaybackStatusUpdate({
+        isLoaded: true,
+        isPlaying: false,
+        isPaused: false,
+        positionMillis: 0,
+        durationMillis: this.duration,
+        didJustFinish: false
       });
-      console.log('AUDIO DEBUG: Audio mode reset before playback');
-      
-      // Get status before playing to verify settings
-      const statusBefore = await this.sound.getStatusAsync();
-      console.log('AUDIO DEBUG: Status before play:', JSON.stringify(statusBefore));
-      
-      // Play the audio
-      const playResult = await this.sound.playAsync();
-      console.log('AUDIO DEBUG: Play result:', JSON.stringify(playResult));
-      
-      // Get status after playing to verify it's actually playing
-      const statusAfter = await this.sound.getStatusAsync();
-      console.log('AUDIO DEBUG: Status after play:', JSON.stringify(statusAfter));
-      
-      console.log('Audio playback started successfully');
-      
-      // Add an extra alert to notify the user
-      if (playResult.isLoaded && playResult.isPlaying) {
-        console.log('AUDIO DEBUG: Playback confirmed - audio should be audible now');
-      } else {
-        console.log('AUDIO DEBUG: Playback may not have started correctly');
-      }
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      console.error('AUDIO DEBUG: Detailed play error:', JSON.stringify(error));
-      throw error;
     }
+    
+    return Promise.resolve();
   }
-
-  // Pause playback
+  
+  /**
+   * Play the loaded audio (stub - simulates playback)
+   */
+  async play(): Promise<void> {
+    console.log('Audio play disabled');
+    this.isPlaying = true;
+    this.isPaused = false;
+    
+    // Notify status update
+    if (this.onPlaybackStatusUpdate) {
+      this.onPlaybackStatusUpdate({
+        isLoaded: true,
+        isPlaying: true,
+        isPaused: false,
+        positionMillis: this.position,
+        durationMillis: this.duration,
+        didJustFinish: false
+      });
+    }
+    
+    return Promise.resolve();
+  }
+  
+  /**
+   * Pause the playing audio (stub)
+   */
   async pause(): Promise<void> {
-    if (!this.sound || !this.isPlaying) return;
+    console.log('Audio pause disabled');
+    this.isPlaying = false;
+    this.isPaused = true;
     
-    try {
-      await this.sound.pauseAsync();
-    } catch (error) {
-      console.error('Error pausing audio:', error);
-      throw error;
+    // Notify status update
+    if (this.onPlaybackStatusUpdate) {
+      this.onPlaybackStatusUpdate({
+        isLoaded: true,
+        isPlaying: false,
+        isPaused: true,
+        positionMillis: this.position,
+        durationMillis: this.duration,
+        didJustFinish: false
+      });
     }
+    
+    return Promise.resolve();
   }
-
-  // Stop playback and reset position
+  
+  /**
+   * Stop the audio playback (stub)
+   */
   async stop(): Promise<void> {
-    if (!this.sound) return;
+    console.log('Audio stop disabled');
+    this.isPlaying = false;
+    this.isPaused = false;
+    this.position = 0;
     
-    try {
-      await this.sound.stopAsync();
-      await this.sound.setPositionAsync(0);
-    } catch (error) {
-      console.error('Error stopping audio:', error);
-      throw error;
+    // Notify status update
+    if (this.onPlaybackStatusUpdate) {
+      this.onPlaybackStatusUpdate({
+        isLoaded: true,
+        isPlaying: false,
+        isPaused: false,
+        positionMillis: 0,
+        durationMillis: this.duration,
+        didJustFinish: false
+      });
     }
+    
+    return Promise.resolve();
   }
-
-  // Rewind by a specified number of seconds
+  
+  /**
+   * Rewind the audio by specified seconds (stub)
+   */
   async rewind(seconds: number = 10): Promise<void> {
-    if (!this.sound) return;
-    
-    try {
-      const status = await this.sound.getStatusAsync();
-      if (status.isLoaded) {
-        const newPosition = Math.max(0, status.positionMillis - (seconds * 1000));
-        await this.sound.setPositionAsync(newPosition);
-      }
-    } catch (error) {
-      console.error('Error rewinding audio:', error);
-      throw error;
-    }
+    console.log('Audio rewind disabled -', seconds, 'seconds');
+    return Promise.resolve();
   }
-
-  // Fast forward by a specified number of seconds
+  
+  /**
+   * Fast forward the audio by specified seconds (stub)
+   */
   async fastForward(seconds: number = 10): Promise<void> {
-    if (!this.sound) return;
-    
-    try {
-      const status = await this.sound.getStatusAsync();
-      if (status.isLoaded) {
-        const newPosition = Math.min(
-          this.duration,
-          status.positionMillis + (seconds * 1000)
-        );
-        await this.sound.setPositionAsync(newPosition);
-      }
-    } catch (error) {
-      console.error('Error fast-forwarding audio:', error);
-      throw error;
-    }
+    console.log('Audio fast-forward disabled -', seconds, 'seconds');
+    return Promise.resolve();
   }
-
-  // Set the playback position
+  
+  /**
+   * Seek to a specific position in milliseconds (stub)
+   */
   async seekTo(positionMillis: number): Promise<void> {
-    if (!this.sound) return;
+    console.log('Audio seek disabled - position:', positionMillis);
+    this.position = Math.min(positionMillis, this.duration);
     
-    try {
-      await this.sound.setPositionAsync(positionMillis);
-    } catch (error) {
-      console.error('Error seeking audio:', error);
-      throw error;
+    // Notify status update
+    if (this.onPlaybackStatusUpdate) {
+      this.onPlaybackStatusUpdate({
+        isLoaded: true,
+        isPlaying: this.isPlaying,
+        isPaused: this.isPaused,
+        positionMillis: this.position,
+        durationMillis: this.duration,
+        didJustFinish: false
+      });
     }
+    
+    return Promise.resolve();
   }
-
-  // Set playback speed
+  
+  /**
+   * Set the playback rate/speed (stub)
+   */
   async setRate(rate: number): Promise<void> {
-    if (!this.sound) return;
-    
-    try {
-      await this.sound.setRateAsync(rate, true);
-    } catch (error) {
-      console.error('Error setting audio rate:', error);
-      throw error;
-    }
+    console.log('Audio rate change disabled - rate:', rate);
+    return Promise.resolve();
   }
-
-  // Unload the audio resource
+  
+  /**
+   * Unload the audio (stub)
+   */
   async unloadAudio(): Promise<void> {
-    if (this.sound) {
-      try {
-        await this.sound.unloadAsync();
-        this.sound = null;
-        this.isPlaying = false;
-        this.isPaused = false;
-        this.duration = 0;
-        this.position = 0;
-      } catch (error) {
-        console.error('Error unloading audio:', error);
-        throw error;
-      }
-    }
+    console.log('Audio unload disabled');
+    this.isPlaying = false;
+    this.isPaused = false;
+    this.position = 0;
+    this.duration = 0;
+    
+    return Promise.resolve();
   }
-
-  // Set callback for playback status updates
-  setOnPlaybackStatusUpdate(callback: (status: Audio.PlaybackStatus) => void): void {
+  
+  /**
+   * Set a callback for playback status updates
+   */
+  setOnPlaybackStatusUpdate(callback: (status: any) => void): void {
     this.onPlaybackStatusUpdate = callback;
   }
-
-  // Set callback for when playback finishes
-  setOnPlaybackFinished(callback: () => void): void {
-    this.onPlaybackFinished = callback;
+  
+  /**
+   * Set a callback for when playback completes
+   */
+  setOnPlaybackComplete(callback: () => void): void {
+    this.onPlaybackComplete = callback;
   }
-
-  // Fade out audio over specified duration and then stop
-  async fadeOut(durationMs: number = 1000): Promise<void> {
-    if (!this.sound || !this.isPlaying) {
-      console.warn('Cannot fade out: sound is null or not playing');
-      return;
-    }
-    
-    try {
-      console.log(`Starting fade out over ${durationMs}ms`);
-      // Get current status to check volume
-      const status = await this.sound.getStatusAsync();
-      if (!status.isLoaded) {
-        console.warn('Cannot fade out: sound not loaded');
-        return;
-      }
-      
-      const startVolume = status.volume || 1.0;
-      const steps = 10; // Number of volume reduction steps
-      const interval = durationMs / steps;
-      const volumeStep = startVolume / steps;
-      
-      console.log(`Fade out starting from volume ${startVolume} with ${steps} steps, each ${interval}ms`);
-      
-      // Gradually reduce volume
-      for (let i = 1; i <= steps; i++) {
-        const newVolume = startVolume - (volumeStep * i);
-        console.log(`Fade step ${i}/${steps}: setting volume to ${newVolume.toFixed(2)}`);
-        await this.sound.setVolumeAsync(Math.max(0, newVolume));
-        // Wait for the next volume reduction
-        await new Promise(resolve => setTimeout(resolve, interval));
-      }
-      
-      // Finally stop the audio after fade-out completes
-      await this.stop();
-      console.log('Fade out completed and audio stopped');
-      
-      // Restore default volume for next playback
-      await this.sound.setVolumeAsync(1.0);
-      
-      // Store callback locally to prevent race conditions
-      const onFinished = this.onPlaybackFinished;
-      
-      // Small delay to ensure stop completes before callback fires
-      setTimeout(() => {
-        // Manually trigger the onPlaybackFinished callback if it exists
-        if (onFinished) {
-          console.log('Executing onPlaybackFinished callback after fade out');
-          onFinished();
-        } else {
-          console.warn('No onPlaybackFinished callback set');
-        }
-      }, 100);
-    } catch (error) {
-      console.error('Error during audio fade out:', error);
-      // Attempt to stop audio and reset volume in case of error
-      try {
-        await this.stop();
-        if (this.sound) {
-          await this.sound.setVolumeAsync(1.0);
-        }
-        
-        // Even in error case, try to trigger callback
-        if (this.onPlaybackFinished) {
-          console.log('Executing onPlaybackFinished callback after fade error');
-          this.onPlaybackFinished();
-        }
-      } catch (stopError) {
-        console.error('Error stopping audio after fade error:', stopError);
-      }
-    }
-  }
-
-  // Get current playback position in milliseconds
-  getPosition(): number {
-    return this.position;
-  }
-
-  // Get total duration in milliseconds
-  getDuration(): number {
-    return this.duration;
-  }
-
-  // Check if audio is currently playing
-  getIsPlaying(): boolean {
-    return this.isPlaying;
-  }
-
-  // Check if audio is currently paused
-  getIsPaused(): boolean {
-    return this.isPaused;
-  }
-
-  // Clean up resources when component unmounts
+  
+  /**
+   * Clean up resources (stub)
+   */
   async cleanup(): Promise<void> {
-    await this.unloadAudio();
+    console.log('Audio player cleanup (DISABLED)');
+    this.isPlaying = false;
+    this.isPaused = false;
+    this.position = 0;
+    this.duration = 0;
+    this.onPlaybackStatusUpdate = null;
+    this.onPlaybackComplete = null;
+    
+    return Promise.resolve();
   }
 }
 
-// Create a singleton instance
-export const storyAudioPlayer = new StoryAudioPlayer();
-export default storyAudioPlayer; 
+// Export a singleton instance
+export const storyAudioPlayer = new StoryAudioPlayer(); 

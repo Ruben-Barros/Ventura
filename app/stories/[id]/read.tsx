@@ -1732,8 +1732,8 @@ export const StoryReadScreen = () => {
         })
       ]).start();
       
-      // Start countdown for auto-selection
-      startChoiceCountdown();
+      // Comment out countdown call - we'll implement this differently later
+      // startChoiceCountdown();
     } else {
       // Reset animations when not at a choice point
       choiceListOpacity.setValue(0);
@@ -1756,6 +1756,12 @@ export const StoryReadScreen = () => {
       <Text style={styles.confirmationText}>Choice Confirmed</Text>
     </Animated.View>
   );
+  
+  // Add placeholder function to prevent errors
+  const startChoiceCountdown = () => {
+    console.log('Choice countdown disabled - empty placeholder');
+    // This is an empty placeholder - we won't implement countdown logic for now
+  };
   
   // Main render
   return (

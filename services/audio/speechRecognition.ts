@@ -1,92 +1,95 @@
-import { Platform } from 'react-native';
-import * as Speech from 'expo-speech';
+/**
+ * DISABLED Speech Recognition Service
+ * This is a stub implementation that doesn't actually recognize speech
+ */
 
-// Simulated speech recognition service since we're using expo-speech
+// Simple event callbacks
+type RecognitionCallback = (text: string) => void;
+type ErrorCallback = (error: Error) => void;
+
+/**
+ * Disabled speech recognition service
+ */
 class SpeechRecognitionService {
   private isListening: boolean = false;
-  private onResultCallback: ((result: string) => void) | null = null;
-  private onErrorCallback: ((error: any) => void) | null = null;
-  private voiceRecognitionTimeout: NodeJS.Timeout | null = null;
-
-  // Initialize speech recognition
-  async init(): Promise<boolean> {
-    // Check if we're on a supported platform
-    if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
-      console.warn('Speech recognition simulation is not supported on this platform');
-      return false;
-    }
-
-    try {
-      // We'll just return true since we're simulating
-      return true;
-    } catch (error) {
-      console.error('Error initializing speech recognition:', error);
-      return false;
-    }
+  private onRecognitionCallback: RecognitionCallback | null = null;
+  private onPartialResultCallback: RecognitionCallback | null = null;
+  private onErrorCallback: ErrorCallback | null = null;
+  
+  /**
+   * Initialize the speech recognition service (does nothing)
+   */
+  async init(): Promise<void> {
+    console.log('Speech recognition initialization disabled');
+    return Promise.resolve();
   }
-
-  // Start listening for voice input (simulated)
-  async startListening(options: {
-    onResult: (result: string) => void,
-    onError?: (error: any) => void,
-    language?: string,
-    partialResults?: boolean,
-  }): Promise<boolean> {
-    if (this.isListening) {
-      await this.stopListening();
-    }
-
-    const { onResult, onError } = options;
-    this.onResultCallback = onResult;
-    this.onErrorCallback = onError || ((error: any) => console.error('Speech recognition error:', error));
-
-    try {
-      this.isListening = true;
-      
-      // Simulate voice recognition with a timeout
-      // In a real implementation, we would use the actual speech recognition API
-      this.voiceRecognitionTimeout = setTimeout(() => {
-        if (this.onResultCallback) {
-          // Return a simulated response after 2 seconds
-          this.onResultCallback("I choose option one");
-        }
-        this.isListening = false;
-      }, 2000);
-      
-      return true;
-    } catch (error) {
-      console.error('Error starting speech recognition:', error);
-      this.isListening = false;
-      return false;
-    }
-  }
-
-  // Stop listening for voice input
-  async stopListening(): Promise<void> {
-    if (!this.isListening) return;
+  
+  /**
+   * Start speech recognition (simulated)
+   */
+  async start(options: { 
+    onRecognized?: RecognitionCallback, 
+    onPartialResult?: RecognitionCallback,
+    onError?: ErrorCallback 
+  } = {}): Promise<void> {
+    console.log('Speech recognition start disabled');
     
-    try {
-      if (this.voiceRecognitionTimeout) {
-        clearTimeout(this.voiceRecognitionTimeout);
-        this.voiceRecognitionTimeout = null;
-      }
-      this.isListening = false;
-    } catch (error) {
-      console.error('Error stopping speech recognition:', error);
+    // Store callbacks
+    this.onRecognitionCallback = options.onRecognized || null;
+    this.onPartialResultCallback = options.onPartialResult || null;
+    this.onErrorCallback = options.onError || null;
+    
+    // Set as listening
+    this.isListening = true;
+    
+    // Simulate partial results after a delay
+    if (this.onPartialResultCallback) {
+      setTimeout(() => {
+        if (this.isListening && this.onPartialResultCallback) {
+          this.onPartialResultCallback('Simulated partial result...');
+        }
+      }, 1500);
     }
+    
+    // Simulate a final result after a longer delay
+    setTimeout(() => {
+      if (this.isListening && this.onRecognitionCallback) {
+        this.onRecognitionCallback('Simulated speech recognition result');
+        this.isListening = false;
+      }
+    }, 3000);
+    
+    return Promise.resolve();
   }
-
-  // Check if speech recognition is currently active
-  isRecognitionActive(): boolean {
+  
+  /**
+   * Stop speech recognition (simulated)
+   */
+  async stop(): Promise<void> {
+    console.log('Speech recognition stop disabled');
+    this.isListening = false;
+    return Promise.resolve();
+  }
+  
+  /**
+   * Check if speech recognition is active
+   */
+  isRecognizing(): boolean {
     return this.isListening;
   }
-
-  // Clean up resources
+  
+  /**
+   * Clean up resources (does nothing)
+   */
   async cleanup(): Promise<void> {
-    await this.stopListening();
+    console.log('Speech recognition cleanup disabled');
+    this.isListening = false;
+    this.onRecognitionCallback = null;
+    this.onPartialResultCallback = null;
+    this.onErrorCallback = null;
+    return Promise.resolve();
   }
 }
 
-// Create a singleton instance
-export const speechRecognition = new SpeechRecognitionService();
-export default speechRecognition; 
+// Export singleton instance
+export const speechRecognition = new SpeechRecognitionService(); 

@@ -1,6 +1,9 @@
-import * as Speech from 'expo-speech';
+/**
+ * DISABLED Text-to-Speech Service
+ * This is a completely disabled version that doesn't actually play any speech
+ */
 
-// Simplified log levels
+// Keep log levels for compatibility
 export enum LogLevel {
   NONE = 0,
   ERROR = 1,
@@ -9,7 +12,7 @@ export enum LogLevel {
   DEBUG = 4
 }
 
-// Basic options for TTS
+// Basic options interface for compatibility
 interface TTSOptions {
   onStart?: () => void;
   onComplete?: () => void;
@@ -20,92 +23,84 @@ interface TTSOptions {
   language?: string;
 }
 
-// Simple text-to-speech service
+/**
+ * Disabled Text-to-Speech service that simulates functionality without actually playing speech
+ */
 class TextToSpeechService {
   private isSpeaking: boolean = false;
   private logLevel: LogLevel = LogLevel.ERROR;
 
-  // Set the logging level
+  // Set the logging level (for compatibility)
   setLogLevel(level: LogLevel) {
     this.logLevel = level;
+    console.log(`[DISABLED TTS] Log level set to ${level}`);
   }
 
-  // Log messages based on level
+  // Log messages based on level (for debugging)
   private log(level: LogLevel, ...messages: any[]) {
     if (level <= this.logLevel) {
       const prefix = ['', 'ERROR', 'WARN', 'INFO', 'DEBUG'][level];
-      console.log(`[TTS:${prefix}]`, ...messages);
+      console.log(`[DISABLED TTS:${prefix}]`, ...messages);
     }
   }
 
-  // Initialize TTS
+  // Initialize TTS (does nothing)
   async init(): Promise<void> {
-    try {
-      this.log(LogLevel.INFO, 'Initializing text-to-speech service');
-      // Nothing special needed for initialization with Expo Speech
-      return Promise.resolve();
-    } catch (error) {
-      this.log(LogLevel.ERROR, 'Failed to initialize TTS service:', error);
-      throw error;
-    }
+    this.log(LogLevel.INFO, 'TTS initialization disabled');
+    return Promise.resolve();
   }
 
-  // Basic speak function
+  // Speak function that just simulates speaking with a delay
   async speak(text: string, options: TTSOptions = {}): Promise<boolean> {
     try {
+      this.log(LogLevel.INFO, `TTS speak disabled - text length: ${text?.length || 0}`);
+      
       // Skip empty text
       if (!text?.trim()) {
-        this.log(LogLevel.WARN, 'Empty text provided to TTS service');
+        this.log(LogLevel.WARN, 'Empty text provided (disabled)');
         return false;
       }
 
-      // Stop any ongoing speech
-      await this.stop();
-
+      // Call onStart immediately
+      if (options.onStart) {
+        setTimeout(() => options.onStart?.(), 10);
+      }
+      
+      // We're "speaking" now
       this.isSpeaking = true;
       
-      const speechOptions = {
-        language: options.language || 'en-US',
-        pitch: options.pitch || 1.0,
-        rate: options.rate || 1.0,
-        onStart: options.onStart,
-        onDone: () => {
-          this.isSpeaking = false;
-          if (options.onComplete) options.onComplete();
-        },
-        onStopped: () => {
-          this.isSpeaking = false;
-        },
-        onError: (error: any) => {
-          this.isSpeaking = false;
-          if (options.onError) options.onError(error);
-          this.log(LogLevel.ERROR, 'Speech error:', error);
-        },
-      };
-
-      this.log(LogLevel.INFO, `Speaking text with length: ${text.length}`);
-      await Speech.speak(text, speechOptions);
+      // Simulate speech duration based on text length
+      const wordsCount = text.split(/\s+/).length;
+      const averageWordDuration = 300; // milliseconds per word
+      const estimatedDuration = Math.max(1000, wordsCount * averageWordDuration);
       
-      return true;
+      this.log(LogLevel.INFO, `Simulating speech for ${estimatedDuration}ms (${wordsCount} words)`);
+      
+      // Use setTimeout to simulate speech completion after the estimated duration
+      return new Promise<boolean>((resolve) => {
+        setTimeout(() => {
+          this.isSpeaking = false;
+          if (options.onComplete) {
+            options.onComplete();
+          }
+          resolve(true);
+        }, estimatedDuration);
+      });
     } catch (error) {
-      this.log(LogLevel.ERROR, 'Error in speak function:', error);
+      this.log(LogLevel.ERROR, 'Error in speak function (disabled):', error);
       this.isSpeaking = false;
       if (options.onError) options.onError(error);
       return false;
     }
   }
 
-  // Stop speaking
+  // Stop speaking (just resets state)
   async stop(): Promise<void> {
-    try {
-      if (this.isSpeaking) {
-        this.log(LogLevel.INFO, 'Stopping speech');
-        await Speech.stop();
-        this.isSpeaking = false;
-      }
-    } catch (error) {
-      this.log(LogLevel.ERROR, 'Error stopping speech:', error);
+    if (this.isSpeaking) {
+      this.log(LogLevel.INFO, 'Stopping speech (disabled)');
+      this.isSpeaking = false;
     }
+    return Promise.resolve();
   }
 
   // Check if speech is active
@@ -113,14 +108,11 @@ class TextToSpeechService {
     return this.isSpeaking;
   }
   
-  // Add a simple cleanup method to prevent errors
+  // Clean up resources (does nothing)
   async cleanup(): Promise<void> {
-    try {
-      await this.stop();
-      this.log(LogLevel.INFO, 'TTS service cleaned up');
-    } catch (error) {
-      this.log(LogLevel.ERROR, 'Error cleaning up TTS service:', error);
-    }
+    this.log(LogLevel.INFO, 'TTS service cleaned up (disabled)');
+    this.isSpeaking = false;
+    return Promise.resolve();
   }
 }
 
