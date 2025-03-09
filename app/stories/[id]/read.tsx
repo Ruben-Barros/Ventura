@@ -888,7 +888,7 @@ export const StoryReadScreen = () => {
             setAudioReady(true);
             setLoadingPhase('ready');
             
-            // Start the intro audio sequence automatically
+            // Start the intro sequence automatically
             playIntroSequence();
             
             // Zoom in background slightly when starting automatically
@@ -925,28 +925,13 @@ export const StoryReadScreen = () => {
             // Create and play intro sound
             const playIntroSound = async () => {
               try {
-                // Create a sound object for intro music/effect
-                const { sound } = await Audio.Sound.createAsync(
-                  // Fallback to a system sound if custom sound file isn't available
-                  require('expo-av/build/Audio/INTERRUPTION_BEGIN.wav'),
-                  { volume: 0.7 }
-                );
+                // Use a simple timeout instead of TTS to create a pause
+                console.log('Creating intro pause before starting narration');
                 
-                // Play the intro sound
-                await sound.playAsync();
+                // Create a 1.5 second pause before narration starts
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 
-                // Wait for sound to finish
-                await new Promise((resolve) => {
-                  sound.setOnPlaybackStatusUpdate((status) => {
-                    if (status.didJustFinish) {
-                      // Clean up sound when finished
-                      sound.unloadAsync();
-                      resolve(true);
-                    }
-                  });
-                });
-                
-                console.log('Intro sound finished, starting narration');
+                console.log('Intro pause complete');
                 
                 // Reset intro state
                 setIsIntroPlaying(false);
@@ -954,7 +939,7 @@ export const StoryReadScreen = () => {
                 // Start main narration after intro completes
                 startMainNarration();
               } catch (error) {
-                console.error('Error playing intro sound:', error);
+                console.error('Error during intro pause:', error);
                 // Reset intro state on error
                 setIsIntroPlaying(false);
                 // Fallback to direct narration
@@ -962,7 +947,7 @@ export const StoryReadScreen = () => {
               }
             };
             
-            // Start playing the intro sound
+            // Start the intro effect
             playIntroSound();
             
           } catch (error) {
@@ -995,11 +980,13 @@ export const StoryReadScreen = () => {
                 // Split the content into sentences
                 const sentences = segmentContent.split(/(?<=[.!?])\s+/);
                 
-                // Use a subset of sentences to provide context
+                // Use all but the last sentence to provide context
                 const narrativeContext = sentences.slice(0, Math.max(sentences.length - 1, 1)).join(' ');
                 
-                // Add the question at the end
-                const fullNarration = narrativeContext + " What will you do?";
+                // Add the question at the end with proper spacing
+                const fullNarration = narrativeContext.trim() + " What will you do?";
+                
+                console.log('Narrating content that ends with "What will you do?"');
                 
                 // Narrate with the modified content
                 await textToSpeech.speak(fullNarration, {
