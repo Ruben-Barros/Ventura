@@ -33,16 +33,6 @@ import * as Reanimated from 'react-native-reanimated';
 import { BlurView } from '@react-native-community/blur';
 import textToSpeech, { LogLevel } from '../../../services/ai/textToSpeech';
 import { useStoryExperience } from '../../../contexts/StoryExperienceContext';
-import { kokoroAudio, EmotionType } from '../../../services/audio/KokoroAudioService';
-
-import { useAuth } from '../../../contexts/AuthContext';
-import { 
-  InputMode, 
-  VisualMode,
-  StoryExperienceMode,
-  StoryChoiceWithKarma 
-} from '../../../types/storyExperience.types';
-import { StoryChoice } from '../../../types/story.types';
 import { KarmaType } from '../../../services/game/karmaSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
