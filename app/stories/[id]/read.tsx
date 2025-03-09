@@ -1573,28 +1573,78 @@ export const StoryReadScreen = () => {
   // Create state to track if narration is complete
   const [narrationComplete, setNarrationComplete] = useState(false);
   
-  // Listen for narration completion and also auto-set it to true when choices appear
+  // Create a custom effect that will BLOCK choices from showing until narration is complete
+  // This overrides the automatic behavior in the context
   useEffect(() => {
-    // Auto-set narrationComplete to true when choices appear
+    // Create a listener for choice point changes
     if (isAtChoicePoint) {
-      // After a short delay, consider narration complete
-      const timer = setTimeout(() => {
-        setNarrationComplete(true);
-      }, 500);
+      console.log("CHOICE OVERRIDE: Choice point detected, but blocking until narration completes");
       
-      return () => clearTimeout(timer);
+      // Force choices to be hidden until narration completes
+      // This overrides the context's automatic behavior
+      const hideChoicesUntilNarrationComplete = async () => {
+        // Wait for any ongoing narration to complete
+        if (playbackState.isPlaying) {
+          console.log("CHOICE OVERRIDE: Waiting for narration to finish before showing choices");
+          
+          // Stop current audio if it's playing (let any narration complete first)
+          if (textToSpeech && typeof textToSpeech.stop === 'function') {
+            try {
+              await textToSpeech.stop();
+            } catch (e) {
+              console.log("Error stopping TTS:", e);
+            }
+          }
+          
+          // Add a small pause for better flow
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Add the "What will you do?" prompt
+          try {
+            console.log("CHOICE OVERRIDE: Adding 'What will you do?' prompt");
+            await textToSpeech.speak("What will you do?", {
+              onComplete: () => {
+                // Now we can show choices
+                console.log("CHOICE OVERRIDE: Now showing choices after narration");
+                setNarrationComplete(true);
+              }
+            });
+          } catch (e) {
+            console.log("Error with final prompt:", e);
+            // Show choices anyway if there's an error
+            setNarrationComplete(true);
+          }
+        } else {
+          // If no narration is playing, still ensure proper flow
+          console.log("CHOICE OVERRIDE: No narration playing, adding final prompt");
+          
+          try {
+            // Add a small pause for better flow
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Always end with "What will you do?"
+            await textToSpeech.speak("What will you do?", {
+              onComplete: () => {
+                // Now we can show choices
+                console.log("CHOICE OVERRIDE: Now showing choices after prompt");
+                setNarrationComplete(true);
+              }
+            });
+          } catch (e) {
+            console.log("Error with final prompt:", e);
+            // Show choices anyway if there's an error
+            setNarrationComplete(true);
+          }
+        }
+      };
+      
+      // Start the process
+      hideChoicesUntilNarrationComplete();
     } else {
-      // Reset when not at choice point
+      // Reset when not at a choice point
       setNarrationComplete(false);
     }
-  }, [isAtChoicePoint]);
-  
-  // Reset narrationComplete when new segment loads
-  useEffect(() => {
-    if (isLoadingNextSegment) {
-      setNarrationComplete(false);
-    }
-  }, [isLoadingNextSegment]);
+  }, [isAtChoicePoint, playbackState.isPlaying]);
 
   // New state for enhanced features
   const [dailyChoices, setDailyChoices] = useState(0);
@@ -1623,14 +1673,16 @@ export const StoryReadScreen = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       
-      {/* Header */}
+      {/* Story Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBackPress} style={styles.backButton}>
-          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>STORY</Text>
-          <Text style={styles.storyTitle} numberOfLines={1}>
+          <Text style={styles.headerTitle}>
+            Now Playing
+          </Text>
+          <Text style={styles.storyTitle}>
             {story?.title || 'Loading...'}
           </Text>
         </View>
@@ -1649,8 +1701,8 @@ export const StoryReadScreen = () => {
           />
         )}
         
-        {/* Show choices whenever isAtChoicePoint is true - removing the narrationComplete condition that broke the UI */}
-        {isAtChoicePoint && renderChoices()}
+        {/* Only show choices when isAtChoicePoint AND narrationComplete are true */}
+        {isAtChoicePoint && narrationComplete && renderChoices()}
       </View>
       
       {/* Bottom Controls */}
