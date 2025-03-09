@@ -29,28 +29,28 @@ interface AudioEffectConfig {
   fadeOutDuration?: number;
 }
 
-// Sound asset paths
+// Sound asset mapping - React Native requires static strings for require()
 const SOUND_ASSETS = {
   // UI Sounds
-  INTRO_CHIME: '../../assets/sounds/intro-chime.mp3',
-  CHOICE_PROMPT: '../../assets/sounds/choice-bell.mp3',
-  CHOICE_SELECT: '../../assets/sounds/choice-select.mp3',
+  INTRO_CHIME: require('../../assets/sounds/intro-chime.mp3'),
+  CHOICE_PROMPT: require('../../assets/sounds/choice-bell.mp3'),
+  CHOICE_SELECT: require('../../assets/sounds/choice-select.mp3'),
   
   // Ambient Sounds
-  FOREST_AMBIANCE: '../../assets/sounds/forest-ambiance.mp3',
-  CAVE_AMBIANCE: '../../assets/sounds/cave-ambiance.mp3',
-  VILLAGE_AMBIANCE: '../../assets/sounds/village-ambiance.mp3',
+  FOREST_AMBIANCE: require('../../assets/sounds/forest-ambiance.mp3'),
+  CAVE_AMBIANCE: require('../../assets/sounds/cave-ambiance.mp3'),
+  VILLAGE_AMBIANCE: require('../../assets/sounds/village-ambiance.mp3'),
   
   // Effects
-  FOOTSTEPS: '../../assets/sounds/footsteps.mp3',
-  DOOR_OPEN: '../../assets/sounds/door-open.mp3',
-  MAGIC_SPELL: '../../assets/sounds/magic-spell.mp3',
+  FOOTSTEPS: require('../../assets/sounds/footsteps.mp3'),
+  DOOR_OPEN: require('../../assets/sounds/door-open.mp3'),
+  MAGIC_SPELL: require('../../assets/sounds/magic-spell.mp3'),
 };
 
 class KokoroAudioService {
   private activeTracks: Map<string, Audio.Sound> = new Map();
   private trackVolumes: Map<string, number> = new Map();
-  private isInitialized: boolean = false;
+  public isInitialized: boolean = false;
   private currentNarrationText: string = '';
   private isChoiceMode: boolean = false;
   
@@ -91,10 +91,10 @@ class KokoroAudioService {
         SOUND_ASSETS.CHOICE_SELECT
       ];
       
-      for (const soundPath of soundsToPreload) {
+      for (const soundAsset of soundsToPreload) {
         const sound = new Audio.Sound();
-        await sound.loadAsync(require(soundPath));
-        console.log(`Preloaded sound: ${soundPath}`);
+        await sound.loadAsync(soundAsset);
+        console.log(`Preloaded sound successfully`);
         // Unload after preloading to save memory, we'll reload when needed
         await sound.unloadAsync();
       }
@@ -113,7 +113,7 @@ class KokoroAudioService {
       const sound = new Audio.Sound();
       
       // Load intro sound
-      await sound.loadAsync(require(SOUND_ASSETS.INTRO_CHIME));
+      await sound.loadAsync(SOUND_ASSETS.INTRO_CHIME);
       
       // Set full volume
       await sound.setVolumeAsync(1.0);
@@ -215,7 +215,7 @@ class KokoroAudioService {
       const sound = new Audio.Sound();
       
       // Load choice prompt sound
-      await sound.loadAsync(require(SOUND_ASSETS.CHOICE_PROMPT));
+      await sound.loadAsync(SOUND_ASSETS.CHOICE_PROMPT);
       
       // Set volume
       await sound.setVolumeAsync(0.7);
@@ -271,7 +271,7 @@ class KokoroAudioService {
       await this.stopTrack(`${TrackType.AMBIENT}_current`);
       
       // Select ambiance file based on type
-      let ambianceAsset: string;
+      let ambianceAsset;
       switch (type) {
         case 'forest':
           ambianceAsset = SOUND_ASSETS.FOREST_AMBIANCE;
@@ -290,7 +290,7 @@ class KokoroAudioService {
       const sound = new Audio.Sound();
       
       // Load ambiance sound
-      await sound.loadAsync(require(ambianceAsset));
+      await sound.loadAsync(ambianceAsset);
       
       // Set volume (start silent if fading in)
       const initialVolume = config.fadeInDuration ? 0.0 : config.volume;
@@ -323,7 +323,7 @@ class KokoroAudioService {
   async playChoiceEffect(type: 'footsteps' | 'door' | 'magic' | 'default') {
     try {
       // Select effect file based on type
-      let effectAsset: string;
+      let effectAsset;
       let volume = 0.6;
       
       switch (type) {
@@ -348,7 +348,7 @@ class KokoroAudioService {
       const sound = new Audio.Sound();
       
       // Load effect sound
-      await sound.loadAsync(require(effectAsset));
+      await sound.loadAsync(effectAsset);
       
       // Set volume
       await sound.setVolumeAsync(volume);

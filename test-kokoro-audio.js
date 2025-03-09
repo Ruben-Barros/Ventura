@@ -110,5 +110,5 @@ async function demoKokoroAudio() {
   }
 }
 
-// Run the demo
-demoKokoroAudio().catch(console.error); 
+// Export instead of immediate execution for better control
+module.exports = { demoKokoroAudio }; 
