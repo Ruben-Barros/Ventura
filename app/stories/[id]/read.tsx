@@ -35,8 +35,14 @@ import textToSpeech, { LogLevel } from '../../../services/ai/textToSpeech';
 import { useStoryExperience } from '../../../contexts/StoryExperienceContext';
 import { KarmaType } from '../../../services/game/karmaSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import Typography from '../../../components/ui/Typography';
+import { useAuth } from '../../../contexts/AuthContext';
+import { 
+  InputMode, 
+  VisualMode,
+  StoryExperienceMode,
+  StoryChoiceWithKarma 
+} from '../../../types/storyExperience.types';
+import { StoryChoice } from '../../../types/story.types';
 import { useStoryteller } from '../../../contexts/StorytellerContext';
 import { throttle } from 'lodash';
 import AnimatedBackground from '../../../components/ui/AnimatedBackground';

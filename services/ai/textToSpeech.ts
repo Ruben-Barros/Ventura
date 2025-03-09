@@ -112,6 +112,16 @@ class TextToSpeechService {
   isSpeechActive(): boolean {
     return this.isSpeaking;
   }
+  
+  // Add a simple cleanup method to prevent errors
+  async cleanup(): Promise<void> {
+    try {
+      await this.stop();
+      this.log(LogLevel.INFO, 'TTS service cleaned up');
+    } catch (error) {
+      this.log(LogLevel.ERROR, 'Error cleaning up TTS service:', error);
+    }
+  }
 }
 
 // Export a singleton instance
