@@ -190,6 +190,14 @@ class StoryAudioPlayer {
   }
   
   /**
+   * Set a callback for when playback finishes (alias for compatibility)
+   */
+  setOnPlaybackFinished(callback: () => void): void {
+    console.log('Using setOnPlaybackFinished (alias for setOnPlaybackComplete)');
+    this.onPlaybackComplete = callback;
+  }
+  
+  /**
    * Clean up resources (stub)
    */
   async cleanup(): Promise<void> {
