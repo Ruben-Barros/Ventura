@@ -12,7 +12,6 @@ import { speechRecognition } from '../services/audio/speechRecognition';
 import { karmaSystem, KarmaType } from '../services/game/karmaSystem';
 import { api } from '../services/api';
 import { Audio } from 'expo-av';
-import { kokoroAudio, EmotionType } from '../services/audio/KokoroAudioService';
 
 // Define the actions that can be dispatched to the reducer
 type StoryExperienceAction =
@@ -496,72 +495,7 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
         } 
       });
       
-      // Enhanced Kokoro audio experience
-      try {
-        // Initialize Kokoro audio service if not already
-        if (!kokoroAudio.isInitialized) {
-          await kokoroAudio.initialize();
-        }
-        
-        // First play the intro sound with fade-out
-        console.log('KOKORO: Playing intro sound before narration');
-        await kokoroAudio.playIntroSound();
-        
-        // Determine emotion based on content
-        let emotion = EmotionType.NEUTRAL;
-        if (content.includes('fear') || content.includes('scared') || content.includes('terrified')) {
-          emotion = EmotionType.FEARFUL;
-        } else if (content.includes('happy') || content.includes('joy') || content.includes('delighted')) {
-          emotion = EmotionType.HAPPY;
-        } else if (content.includes('mystery') || content.includes('strange') || content.includes('unknown')) {
-          emotion = EmotionType.MYSTERIOUS;
-        }
-        
-        // Start ambiance based on content keywords
-        if (content.includes('forest') || content.includes('woods') || content.includes('trees')) {
-          await kokoroAudio.startAmbiance('forest');
-        } else if (content.includes('cave') || content.includes('tunnel') || content.includes('underground')) {
-          await kokoroAudio.startAmbiance('cave');
-        } else if (content.includes('village') || content.includes('town') || content.includes('people')) {
-          await kokoroAudio.startAmbiance('village');
-        } else {
-          // Default ambiance
-          await kokoroAudio.startAmbiance('forest');
-        }
-        
-        // Start narration with fade-in and emotional inflection
-        console.log('KOKORO: Starting narration with emotion:', emotion);
-        await kokoroAudio.startNarration(finalContent, emotion);
-        
-        // If we have choices, append "What will you do?" at the end
-        if (hasChoices) {
-          // Give a short pause after the main narration
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Play the "What will you do?" prompt
-          console.log('KOKORO: Adding "What will you do?" prompt');
-          await kokoroAudio.startNarration("What will you do?", EmotionType.MYSTERIOUS);
-          
-          // Short delay before showing choices to allow the prompt to be heard
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // Pause narration and play choice prompt sound
-          await kokoroAudio.pauseNarrationForChoices();
-          
-          // Show choices after narration completes
-          console.log('KOKORO: Narration complete, showing choices');
-          setTimeout(() => {
-            dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
-          }, 300);
-        }
-        
-        return;
-      } catch (error) {
-        console.error('Error with Kokoro audio experience:', error);
-        // Fall back to regular TTS if Kokoro fails
-      }
-      
-      // Fallback: Begin speaking with the regular TTS service
+      // Basic TTS fallback without Kokoro audio enhancements
       const result = await textToSpeech.speak(finalContent, {
         onStart: () => {
           console.log('TTS started speaking segment content');
@@ -855,27 +789,6 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
         return;
       }
       
-      // Play appropriate sound effect based on choice
-      try {
-        // Determine effect type based on choice text
-        let effectType = 'default';
-        const choiceText = selectedChoice.choice_text.toLowerCase();
-        
-        if (choiceText.includes('walk') || choiceText.includes('run') || choiceText.includes('path')) {
-          effectType = 'footsteps';
-        } else if (choiceText.includes('door') || choiceText.includes('open') || choiceText.includes('enter')) {
-          effectType = 'door';
-        } else if (choiceText.includes('magic') || choiceText.includes('spell') || choiceText.includes('power')) {
-          effectType = 'magic';
-        }
-        
-        // Play the effect using Kokoro
-        await kokoroAudio.playChoiceEffect(effectType);
-      } catch (error) {
-        console.error('Error playing choice effect:', error);
-        // Continue with choice processing even if effect fails
-      }
-      
       // Process karma impact if present
       if ((selectedChoice as StoryChoiceWithKarma).karmaImpact) {
         const impact = (selectedChoice as StoryChoiceWithKarma).karmaImpact;
@@ -934,14 +847,8 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
           // End processing state
           dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
           
-          // Resume narration after choice is made
-          try {
-            await kokoroAudio.resumeNarrationAfterChoice(nextSegment.content);
-          } catch (error) {
-            console.error('Error resuming narration after choice:', error);
-            // Fallback: Use standard playback if Kokoro fails
-            await speakSegmentContent(dispatch, () => state)(nextSegment.content);
-          }
+          // Basic narration without Kokoro enhancements
+          await speakSegmentContent(dispatch, () => state)(nextSegment.content);
           
           // Mark segment load as complete
           dispatch({ type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: false } });
