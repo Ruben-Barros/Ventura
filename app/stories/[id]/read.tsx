@@ -913,23 +913,68 @@ export const StoryReadScreen = () => {
         // Function to play the intro sequence with proper transitions
         const playIntroSequence = async () => {
           try {
-            console.log('Skipping intro sequence, going directly to main narration...');
+            console.log('Playing intro sequence before starting narration...');
             
             // Set loading state to complete and audio as ready
             setLoadingPhase('ready');
             setAudioReady(true);
             
-            // Skip intro and go straight to main narration
-            startMainNarration();
+            // Set state that intro is playing
+            setIsIntroPlaying(true);
+            
+            // Create and play intro sound
+            const playIntroSound = async () => {
+              try {
+                // Create a sound object for intro music/effect
+                const { sound } = await Audio.Sound.createAsync(
+                  // Fallback to a system sound if custom sound file isn't available
+                  require('expo-av/build/Audio/INTERRUPTION_BEGIN.wav'),
+                  { volume: 0.7 }
+                );
+                
+                // Play the intro sound
+                await sound.playAsync();
+                
+                // Wait for sound to finish
+                await new Promise((resolve) => {
+                  sound.setOnPlaybackStatusUpdate((status) => {
+                    if (status.didJustFinish) {
+                      // Clean up sound when finished
+                      sound.unloadAsync();
+                      resolve(true);
+                    }
+                  });
+                });
+                
+                console.log('Intro sound finished, starting narration');
+                
+                // Reset intro state
+                setIsIntroPlaying(false);
+                
+                // Start main narration after intro completes
+                startMainNarration();
+              } catch (error) {
+                console.error('Error playing intro sound:', error);
+                // Reset intro state on error
+                setIsIntroPlaying(false);
+                // Fallback to direct narration
+                startMainNarration();
+              }
+            };
+            
+            // Start playing the intro sound
+            playIntroSound();
+            
           } catch (error) {
             console.error('Error in playIntroSequence:', error);
-            // Fallback to direct narration
+            // Reset intro state on error
             setIsIntroPlaying(false);
+            // Fallback to direct narration
             startMainNarration();
           }
         };
         
-        // Function to start the main narration
+        // Modify the function to start narration and ensure it ends with "What will you do?"
         const startMainNarration = async () => {
           try {
             console.log('Starting main narration');
@@ -938,7 +983,57 @@ export const StoryReadScreen = () => {
             setLoadingPhase('ready');
             setAudioReady(true);
             
-            // Automatically start playing the main narration
+            // Get the current segment content from the state
+            const segmentContent = state.currentSegment?.content || '';
+            
+            // Ensure narration ends with "What will you do?"
+            if (state.availableChoices && state.availableChoices.length > 0) {
+              try {
+                // Stop any ongoing narration
+                textToSpeech.stop();
+                
+                // Split the content into sentences
+                const sentences = segmentContent.split(/(?<=[.!?])\s+/);
+                
+                // Use a subset of sentences to provide context
+                const narrativeContext = sentences.slice(0, Math.max(sentences.length - 1, 1)).join(' ');
+                
+                // Add the question at the end
+                const fullNarration = narrativeContext + " What will you do?";
+                
+                // Narrate with the modified content
+                await textToSpeech.speak(fullNarration, {
+                  onStart: () => {
+                    console.log('Main narration with choice prompt started');
+                  },
+                  onComplete: () => {
+                    console.log('Main narration completed, now showing choices');
+                    // Show choices immediately when narration finishes
+                    setTimeout(() => {
+                      if (state.availableChoices.length > 0) {
+                        dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
+                      }
+                    }, 300);
+                  },
+                  onError: (error) => {
+                    console.error('Error during narration:', error);
+                    // Show choices even if narration failed
+                    setTimeout(() => {
+                      if (state.availableChoices.length > 0) {
+                        dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
+                      }
+                    }, 300);
+                  }
+                });
+                
+                return;
+              } catch (error) {
+                console.error('Error in custom narration:', error);
+                // Fall back to standard playAudio
+              }
+            }
+            
+            // Fallback: Use standard audio playback if no choices or if custom narration failed
             await playAudio();
             
             // Zoom in background slightly for immersive effect
@@ -953,7 +1048,7 @@ export const StoryReadScreen = () => {
             // Show manual play button as last resort
             setShowManualPlayButton(true);
           }
-        }
+        };
         
         // Function to start direct narration (bypassing the normal flow)
         const startDirectNarration = async () => {
