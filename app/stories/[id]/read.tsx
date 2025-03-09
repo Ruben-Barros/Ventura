@@ -589,6 +589,8 @@ interface Styles {
   feedbackText: TextStyle;
   choiceDescription: TextStyle;
   choiceArrow: TextStyle;
+  karmaTooltip: ViewStyle;
+  karmaTooltipText: TextStyle;
 }
 
 // Main story reading screen component
@@ -1139,9 +1141,269 @@ export const StoryReadScreen = () => {
     setShowTranscript(prev => !prev);
   }, []);
   
+  // Hooks for the choice UI that were previously inside renderChoices
+  const [timeRemaining, setTimeRemaining] = useState(30);
+  const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  
+  // Add state for karma feedback tooltip
+  const [showKarmaTooltip, setShowKarmaTooltip] = useState(false);
+  const [karmaFeedback, setKarmaFeedback] = useState({ type: '', value: 0 });
+  
+  // Story-specific narrative context (example titles)
+  const storyContext = {
+    title: "",
+    question: "What will you do next?"
+  };
+  
+  // Narrative-specific choices with contextual labels
+  const narrativeChoices = [
+    { 
+      id: 0, 
+      icon: 'sword', 
+      label: 'Confront the Whispering Shadow',
+      description: 'Take a stand against the unknown presence' 
+    },
+    { 
+      id: 1, 
+      icon: 'run-fast', 
+      label: 'Flee Through the Misty Path',
+      description: 'Seek safety in the depths of the forest' 
+    },
+    { 
+      id: 2, 
+      icon: 'chat', 
+      label: 'Call Out to the Presence',
+      description: 'Attempt to communicate with whatever lurks nearby' 
+    },
+    { 
+      id: 3, 
+      icon: 'hand-peace', 
+      label: 'Offer a Sign of Peace',
+      description: 'Show that you mean no harm' 
+    },
+    { 
+      id: 4, 
+      icon: 'eye', 
+      label: 'Search the Surrounding Area',
+      description: 'Look for clues or hidden paths' 
+    },
+    { 
+      id: 5, 
+      icon: 'flashlight', 
+      label: 'Investigate the Strange Sounds',
+      description: 'Determine the source of the disturbance' 
+    }
+  ];
+  
+  // Helper function for time expiration - moved outside renderChoices
+  const handleTimeExpired = () => {
+    // Select the "observe" option (usually the most neutral)
+    const defaultChoice = availableChoices[4];
+    if (defaultChoice) {
+      handleSelectChoice(defaultChoice);
+    }
+  };
+  
+  // Set up countdown timer effect - moved outside renderChoices
+  useEffect(() => {
+    if (!isAtChoicePoint) return;
+    
+    // Reset timer when choices become available
+    setTimeRemaining(30);
+    
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 0) {
+          // Auto-select a neutral option when time expires
+          handleTimeExpired();
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [isAtChoicePoint, availableChoices]);
+
+  // Set up effect for button animation that runs when selectedButtonIndex changes
+  useEffect(() => {
+    if (selectedButtonIndex !== null) {
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 1.05,
+          duration: 150,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.ease)
+        }),
+        Animated.timing(buttonScale, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+          easing: Easing.inOut(Easing.ease)
+        })
+      ]).start(() => {
+        setSelectedButtonIndex(null);
+      });
+    }
+  }, [selectedButtonIndex, buttonScale]);
+
+  const renderChoices = () => {
+    if (!isAtChoicePoint) return null;
+    
+    // Calculate timer progress here (not using any hooks)
+    const timerProgress = timeRemaining / 30;
+    
+    return (
+      <View style={styles.choicesContainer}>
+        {/* Story context header */}
+        
+        {/* Choice prompt question */}
+        <Text style={styles.choiceQuestion}>{storyContext.question}</Text>
+        
+        {/* Countdown timer */}
+        <View style={styles.countdownContainer}>
+          <View style={styles.countdownBg}>
+            <View 
+              style={[
+                styles.countdownFg, 
+                { 
+                  width: `${timerProgress * 100}%`,
+                  backgroundColor: timerProgress < 0.3 ? '#FF0000' : '#00A8FF' 
+                }
+              ]} 
+            />
+          </View>
+          <Text style={styles.countdownText}>{timeRemaining}s</Text>
+        </View>
+        
+        {/* Vertical list of choices */}
+        <ScrollView 
+          style={styles.choicesScrollView}
+          contentContainerStyle={styles.choicesScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {narrativeChoices.map((choice, index) => {
+            const actualChoice = availableChoices[choice.id % availableChoices.length];
+            const isActive = !!actualChoice;
+            const isSelected = selectedButtonIndex === index;
+            
+            return (
+              <Animated.View 
+                key={index}
+                style={[
+                  { transform: [{ scale: isSelected ? buttonScale : 1 }] }
+                ]}
+              >
+                <TouchableOpacity 
+                  style={[
+                    styles.choiceButton,
+                    selectedButtonIndex === index && styles.choiceButtonSelected
+                  ]}
+                  onPress={() => {
+                    if (isActive && !isProcessingChoice) {
+                      setSelectedButtonIndex(index);
+                      
+                      // Simple delay before handling the choice
+                      setTimeout(() => {
+                        handleSelectChoice(actualChoice);
+                      }, 300);
+                    }
+                  }}
+                  disabled={!isActive || isProcessingChoice}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.choiceIconContainer}>
+                    <MaterialCommunityIcons 
+                      name={choice.icon as any}
+                      size={28} 
+                      color="#FFFFFF"
+                    />
+                  </View>
+                  
+                  <View style={styles.choiceTextContainer}>
+                    <Text style={styles.choiceText}>{choice.label}</Text>
+                    <Text style={styles.choiceDescription}>{choice.description}</Text>
+                  </View>
+                  
+                  <MaterialCommunityIcons 
+                    name="chevron-right" 
+                    size={24} 
+                    color="#E50914"
+                    style={styles.choiceArrow}
+                  />
+                </TouchableOpacity>
+              </Animated.View>
+            );
+          })}
+        </ScrollView>
+        
+        {/* Feedback badge (appears after selection) */}
+        {isProcessingChoice && selectedChoice && (
+          <View style={styles.feedbackBadge}>
+            <MaterialCommunityIcons 
+              name="check-circle" 
+              size={20} 
+              color="#00FF00"
+            />
+            <Text style={styles.feedbackText}>Choice Confirmed</Text>
+          </View>
+        )}
+        
+        {/* Karma tooltip (shown after selection) */}
+        {showKarmaTooltip && (
+          <View style={styles.karmaTooltip}>
+            <Text style={styles.karmaTooltipText}>
+              {karmaFeedback.type} {karmaFeedback.value} Karma
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Update the karma display to use defined styles
+  const renderKarmaDisplay = () => {
+    // First check if selectedChoice exists and is an object
+    if (!selectedChoice || typeof selectedChoice !== 'object') return null;
+    
+    // Then safely cast to StoryChoiceWithKarma
+    const choice = selectedChoice as StoryChoiceWithKarma;
+    if (!choice.karmaImpact) return null;
+
+    return (
+      <View style={styles.bottomActions}>
+        <MaterialCommunityIcons
+          name={choice.karmaImpact.type === KarmaType.GOOD ? "heart" : "heart-broken"}
+          size={16}
+          color={choice.karmaImpact.type === KarmaType.GOOD ? "#32CD32" : "#FF4500"}
+        />
+        <Text style={styles.karmaText}>
+          {Math.abs(choice.karmaImpact.value || 0)}
+        </Text>
+      </View>
+    );
+  };
+
   // Handle choice selection
   const handleSelectChoice = useCallback((choice) => {
     if (!choice) return;
+    
+    // Show karma tooltip if choice has karma impact
+    if ((choice as StoryChoiceWithKarma).karmaImpact) {
+      const impact = (choice as StoryChoiceWithKarma).karmaImpact;
+      setKarmaFeedback({
+        type: impact.type === KarmaType.GOOD ? 'Gained' : 'Lost',
+        value: Math.abs(impact.value || 0)
+      });
+      setShowKarmaTooltip(true);
+      
+      // Hide the tooltip after 3 seconds
+      setTimeout(() => {
+        setShowKarmaTooltip(false);
+      }, 3000);
+    }
     
     // Set the selected choice using existing makeChoice function
     makeChoice(choice.id);
@@ -1308,239 +1570,6 @@ export const StoryReadScreen = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       seekToPosition(seekPosition);
     }
-  };
-
-  // Hooks for the choice UI that were previously inside renderChoices
-  const [timeRemaining, setTimeRemaining] = useState(10);
-  const [selectedButtonIndex, setSelectedButtonIndex] = useState<number | null>(null);
-  const buttonScale = useRef(new Animated.Value(1)).current;
-  
-  // Story-specific narrative context (example titles)
-  const storyContext = {
-    title: "The Forest's Edge",
-    question: "What will you do next?"
-  };
-  
-  // Narrative-specific choices with contextual labels
-  const narrativeChoices = [
-    { 
-      id: 0, 
-      icon: 'sword', 
-      label: 'Confront the Whispering Shadow',
-      description: 'Take a stand against the unknown presence' 
-    },
-    { 
-      id: 1, 
-      icon: 'run-fast', 
-      label: 'Flee Through the Misty Path',
-      description: 'Seek safety in the depths of the forest' 
-    },
-    { 
-      id: 2, 
-      icon: 'chat', 
-      label: 'Call Out to the Presence',
-      description: 'Attempt to communicate with whatever lurks nearby' 
-    },
-    { 
-      id: 3, 
-      icon: 'hand-peace', 
-      label: 'Offer a Sign of Peace',
-      description: 'Show that you mean no harm' 
-    },
-    { 
-      id: 4, 
-      icon: 'eye', 
-      label: 'Search the Surrounding Area',
-      description: 'Look for clues or hidden paths' 
-    },
-    { 
-      id: 5, 
-      icon: 'flashlight', 
-      label: 'Investigate the Strange Sounds',
-      description: 'Determine the source of the disturbance' 
-    }
-  ];
-  
-  // Helper function for time expiration - moved outside renderChoices
-  const handleTimeExpired = () => {
-    // Select the "observe" option (usually the most neutral)
-    const defaultChoice = availableChoices[4];
-    if (defaultChoice) {
-      handleSelectChoice(defaultChoice);
-    }
-  };
-  
-  // Set up countdown timer effect - moved outside renderChoices
-  useEffect(() => {
-    if (!isAtChoicePoint) return;
-    
-    // Reset timer when choices become available
-    setTimeRemaining(10);
-    
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 0) {
-          // Auto-select a neutral option when time expires
-          handleTimeExpired();
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [isAtChoicePoint, availableChoices]);
-  
-  // Set up effect for button animation that runs when selectedButtonIndex changes
-  useEffect(() => {
-    if (selectedButtonIndex !== null) {
-      Animated.sequence([
-        Animated.timing(buttonScale, {
-          toValue: 1.05,
-          duration: 150,
-          useNativeDriver: true,
-          easing: Easing.out(Easing.ease)
-        }),
-        Animated.timing(buttonScale, {
-          toValue: 1,
-          duration: 150,
-          useNativeDriver: true,
-          easing: Easing.inOut(Easing.ease)
-        })
-      ]).start(() => {
-        setSelectedButtonIndex(null);
-      });
-    }
-  }, [selectedButtonIndex, buttonScale]);
-
-  const renderChoices = () => {
-    if (!isAtChoicePoint) return null;
-    
-    // Calculate timer progress here (not using any hooks)
-    const timerProgress = timeRemaining / 10; // 0 to 1 scale
-    
-    return (
-      <View style={styles.choicesContainer}>
-        {/* Story context header */}
-        <Text style={styles.choiceStoryContext}>{storyContext.title}</Text>
-        
-        {/* Choice prompt question */}
-        <Text style={styles.choiceQuestion}>{storyContext.question}</Text>
-        
-        {/* Countdown timer */}
-        <View style={styles.countdownContainer}>
-          <View style={styles.countdownBg}>
-            <View 
-              style={[
-                styles.countdownFg, 
-                { 
-                  width: `${timerProgress * 100}%`,
-                  backgroundColor: timerProgress < 0.3 ? '#FF0000' : '#00A8FF' 
-                }
-              ]} 
-            />
-          </View>
-          <Text style={styles.countdownText}>{timeRemaining}s</Text>
-        </View>
-        
-        {/* Vertical list of choices */}
-        <ScrollView 
-          style={styles.choicesScrollView}
-          contentContainerStyle={styles.choicesScrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {narrativeChoices.map((choice, index) => {
-            const actualChoice = availableChoices[choice.id % availableChoices.length];
-            const isActive = !!actualChoice;
-            const isSelected = selectedButtonIndex === index;
-            
-            return (
-              <Animated.View 
-                key={index}
-                style={[
-                  { transform: [{ scale: isSelected ? buttonScale : 1 }] }
-                ]}
-              >
-                <TouchableOpacity 
-                  style={[
-                    styles.choiceButton,
-                    selectedButtonIndex === index && styles.choiceButtonSelected
-                  ]}
-                  onPress={() => {
-                    if (isActive && !isProcessingChoice) {
-                      setSelectedButtonIndex(index);
-                      
-                      // Simple delay before handling the choice
-                      setTimeout(() => {
-                        handleSelectChoice(actualChoice);
-                      }, 300);
-                    }
-                  }}
-                  disabled={!isActive || isProcessingChoice}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.choiceIconContainer}>
-                    <MaterialCommunityIcons 
-                      name={choice.icon as any}
-                      size={28} 
-                      color="#FFFFFF"
-                    />
-                  </View>
-                  
-                  <View style={styles.choiceTextContainer}>
-                    <Text style={styles.choiceText}>{choice.label}</Text>
-                    <Text style={styles.choiceDescription}>{choice.description}</Text>
-                  </View>
-                  
-                  <MaterialCommunityIcons 
-                    name="chevron-right" 
-                    size={24} 
-                    color="#00A8FF"
-                    style={styles.choiceArrow}
-                  />
-                </TouchableOpacity>
-              </Animated.View>
-            );
-          })}
-        </ScrollView>
-        
-        {/* Feedback badge (appears after selection) */}
-        {isProcessingChoice && selectedChoice && (
-          <View style={styles.feedbackBadge}>
-            <MaterialCommunityIcons 
-              name="check-circle" 
-              size={20} 
-              color="#00FF00"
-            />
-            <Text style={styles.feedbackText}>Choice Confirmed</Text>
-          </View>
-        )}
-      </View>
-    );
-  };
-
-  // Update the karma display to use defined styles
-  const renderKarmaDisplay = () => {
-    // First check if selectedChoice exists and is an object
-    if (!selectedChoice || typeof selectedChoice !== 'object') return null;
-    
-    // Then safely cast to StoryChoiceWithKarma
-    const choice = selectedChoice as StoryChoiceWithKarma;
-    if (!choice.karmaImpact) return null;
-
-    return (
-      <View style={styles.bottomActions}>
-        <MaterialCommunityIcons
-          name={choice.karmaImpact.type === KarmaType.GOOD ? "heart" : "heart-broken"}
-          size={16}
-          color={choice.karmaImpact.type === KarmaType.GOOD ? "#32CD32" : "#FF4500"}
-        />
-        <Text style={styles.karmaText}>
-          {Math.abs(choice.karmaImpact.value || 0)}
-        </Text>
-      </View>
-    );
   };
 
   // Main render
@@ -1800,12 +1829,10 @@ const styles = StyleSheet.create<Styles>({
   choiceButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4A4A4A',
-    borderRadius: 8,
+    backgroundColor: 'rgba(20, 20, 20, 0.9)',
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 168, 255, 0.3)', // #00A8FF with opacity
+    borderRadius: 8,
   },
   choiceButtonDisabled: {
     opacity: 0.5,
@@ -2067,9 +2094,7 @@ const styles = StyleSheet.create<Styles>({
     paddingBottom: 16,
   },
   choiceButtonSelected: {
-    backgroundColor: '#2A2A2A',
-    borderColor: '#00A8FF',
-    borderWidth: 2,
+    backgroundColor: 'rgba(40, 40, 40, 0.9)',
   },
   choiceIconContainer: {
     width: 40,
@@ -2108,5 +2133,23 @@ const styles = StyleSheet.create<Styles>({
     color: '#B0B0B0', // Light gray for secondary text
     fontSize: 14,
     marginTop: 4,
+  },
+  karmaTooltip: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -80 }, { translateY: -20 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    padding: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E50914', // Netflix red
+    zIndex: 1000,
+  },
+  karmaTooltipText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 }); 
