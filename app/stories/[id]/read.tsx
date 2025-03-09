@@ -1488,42 +1488,21 @@ export const StoryReadScreen = () => {
   // Create state to track if narration is complete
   const [narrationComplete, setNarrationComplete] = useState(false);
   
-  // Listen for narration completion
+  // Listen for narration completion and also auto-set it to true when choices appear
   useEffect(() => {
-    // Setup listener for TTS completion
-    const handleTTSCompletion = () => {
-      console.log('Narration complete, ready to show choices');
-      setNarrationComplete(true);
-    };
-    
-    // Add a listener to the text-to-speech service if possible
-    if (textToSpeech && typeof textToSpeech.addCompletionListener === 'function') {
-      textToSpeech.addCompletionListener(handleTTSCompletion);
-    }
-    
-    // Another approach - listen for playback status changes
-    const handlePlaybackStatusChange = (status) => {
-      if (status && status.didJustFinish) {
-        console.log('Audio playback finished, ready to show choices');
+    // Auto-set narrationComplete to true when choices appear
+    if (isAtChoicePoint) {
+      // After a short delay, consider narration complete
+      const timer = setTimeout(() => {
         setNarrationComplete(true);
-      }
-    };
-    
-    // Try to add the listener if the function exists
-    if (typeof playbackState.addStatusListener === 'function') {
-      playbackState.addStatusListener(handlePlaybackStatusChange);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    } else {
+      // Reset when not at choice point
+      setNarrationComplete(false);
     }
-    
-    return () => {
-      // Clean up listeners if functions exist
-      if (textToSpeech && typeof textToSpeech.removeCompletionListener === 'function') {
-        textToSpeech.removeCompletionListener(handleTTSCompletion);
-      }
-      if (typeof playbackState.removeStatusListener === 'function') {
-        playbackState.removeStatusListener(handlePlaybackStatusChange);
-      }
-    };
-  }, []);
+  }, [isAtChoicePoint]);
   
   // Reset narrationComplete when new segment loads
   useEffect(() => {
@@ -1585,8 +1564,8 @@ export const StoryReadScreen = () => {
           />
         )}
         
-        {/* Only show choices when narration is complete AND we're at a choice point */}
-        {isAtChoicePoint && narrationComplete && renderChoices()}
+        {/* Show choices whenever isAtChoicePoint is true - removing the narrationComplete condition that broke the UI */}
+        {isAtChoicePoint && renderChoices()}
       </View>
       
       {/* Bottom Controls */}
