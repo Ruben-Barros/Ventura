@@ -7,7 +7,7 @@ import {
   StoryChoiceWithKarma
 } from '../types/storyExperience.types';
 import { storyAudioPlayer } from '../services/audio/storyAudioPlayer';
-import { textToSpeech } from '../services/ai/textToSpeech';
+import textToSpeech from '../services/ai/textToSpeech';
 import { speechRecognition } from '../services/audio/speechRecognition';
 import { karmaSystem, KarmaType } from '../services/game/karmaSystem';
 import { api } from '../services/api';
