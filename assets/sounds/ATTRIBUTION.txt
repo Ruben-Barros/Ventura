@@ -1,0 +1,11 @@
+Sound File Attributions:
+
+intro-chime.mp3: Intro Chime by Freesound user Groundworking
+choice-bell.mp3: Bell by Freesound user TheEasterEgg
+choice-select.mp3: UI Click by Freesound user MATRIXXX_
+forest-ambiance.mp3: Forest Ambiance by Freesound user klankbeeld
+cave-ambiance.mp3: Cave Drips by Freesound user newagesoup
+village-ambiance.mp3: Village Ambiance by Freesound user felix.blume
+footsteps.mp3: Footsteps by Freesound user alienistcog
+door-open.mp3: Door Open by Freesound user aglinder
+magic-spell.mp3: Magic Spell by Freesound user BurghRecords

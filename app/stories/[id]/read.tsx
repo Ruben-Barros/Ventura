@@ -17,7 +17,8 @@ import {
   StatusBar,
   ViewStyle,
   TextStyle,
-  ImageStyle
+  ImageStyle,
+  FlatList
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,9 +32,10 @@ import Svg, { Path } from 'react-native-svg';
 import * as Reanimated from 'react-native-reanimated';
 import { BlurView } from '@react-native-community/blur';
 import textToSpeech, { LogLevel } from '../../../services/ai/textToSpeech';
+import { useStoryExperience } from '../../../contexts/StoryExperienceContext';
+import { kokoroAudio, EmotionType } from '../../../services/audio/KokoroAudioService';
 
 import { useAuth } from '../../../contexts/AuthContext';
-import { useStoryExperience } from '../../../contexts/StoryExperienceContext';
 import { 
   InputMode, 
   VisualMode,
@@ -591,6 +593,14 @@ interface Styles {
   choiceArrow: TextStyle;
   karmaTooltip: ViewStyle;
   karmaTooltipText: TextStyle;
+  confirmationBadge: ViewStyle;
+  confirmationText: TextStyle;
+  choiceContainer: ViewStyle;
+  choiceInfoContainer: ViewStyle;
+  listContainer: ViewStyle;
+  choiceList: ViewStyle;
+  loadingOverlay: ViewStyle;
+  loadingText: TextStyle;
 }
 
 // Main story reading screen component
@@ -1407,38 +1417,50 @@ export const StoryReadScreen = () => {
   };
 
   // Handle choice selection
-  const handleSelectChoice = useCallback((choice) => {
-    if (!choice) return;
-    
-    // Show karma tooltip if choice has karma impact
-    if ((choice as StoryChoiceWithKarma).karmaImpact) {
-      const impact = (choice as StoryChoiceWithKarma).karmaImpact;
-      setKarmaFeedback({
-        type: impact.type === KarmaType.GOOD ? 'Gained' : 'Lost',
-        value: Math.abs(impact.value || 0)
-      });
-      setShowKarmaTooltip(true);
+  const handleSelectChoice = useCallback(async (choice: StoryChoice) => {
+    try {
+      // Already selected a choice, don't allow another selection
+      if (selectedButtonIndex !== null) return;
       
-      // Hide the tooltip after 3 seconds
-      setTimeout(() => {
-        setShowKarmaTooltip(false);
-      }, 3000);
-    }
-    
-    // Set the selected choice using existing makeChoice function
-    makeChoice(choice.id);
-    
-    // Simulate processing time for the choice
-    setTimeout(() => {
-      // After processing, update state to return to image
-      // This will be handled by the useStoryExperience hook
-      
-      // Example: Play audio after choice is made
-      if (currentAudioSegment && !isPlaying) {
-        playAudio();
+      // Pause any existing countdown
+      if (countdownTimerRef.current) {
+        clearTimeout(countdownTimerRef.current);
+        countdownTimerRef.current = null;
       }
-    }, 1500); // Short delay to show the choice was selected
-  }, [makeChoice, currentAudioSegment, isPlaying, playAudio]);
+      
+      // Set the selected choice
+      setSelectedButtonIndex(choice.id);
+      
+      // Show the confirmation badge
+      Animated.parallel([
+        Animated.timing(confirmationBadgeOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(confirmationBadgeScale, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.elastic(1.2),
+          useNativeDriver: true,
+        })
+      ]).start();
+      
+      // Short delay to show button animation before proceeding
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Make the choice
+      makeChoice(choice.id);
+      
+      // Reset countdown and animations for next choice
+      countdownAnim.setValue(1);
+      confirmationBadgeOpacity.setValue(0);
+      confirmationBadgeScale.setValue(0.5);
+      
+    } catch (error) {
+      console.error('Error handling choice selection:', error);
+    }
+  }, [selectedButtonIndex, makeChoice, confirmationBadgeOpacity, confirmationBadgeScale, countdownAnim]);
   
   // Handle voice input for choosing options
   const handleStartVoiceInput = useCallback(() => {
@@ -1668,6 +1690,77 @@ export const StoryReadScreen = () => {
     }
   };
 
+  // Refs for animations
+  const countdownAnim = useRef(new Animated.Value(1)).current;
+  const choiceListOpacity = useRef(new Animated.Value(0)).current;
+  const choiceInfoOpacity = useRef(new Animated.Value(0)).current;
+  const confirmationBadgeOpacity = useRef(new Animated.Value(0)).current;
+  const confirmationBadgeScale = useRef(new Animated.Value(0.5)).current;
+  
+  // Initialize audio service
+  useEffect(() => {
+    // Initialize Kokoro audio service
+    const initAudio = async () => {
+      try {
+        await kokoroAudio.initialize();
+        // Preload common sounds
+        await kokoroAudio.preloadSounds();
+        console.log('Kokoro audio service initialized');
+      } catch (error) {
+        console.error('Failed to initialize Kokoro audio service:', error);
+      }
+    };
+    
+    initAudio();
+    
+    // Clean up audio on unmount
+    return () => {
+      kokoroAudio.cleanup();
+    };
+  }, []);
+  
+  // Show choices with animation once narration completes
+  useEffect(() => {
+    if (isAtChoicePoint && !isProcessingChoice) {
+      // Fade in choices
+      Animated.sequence([
+        Animated.timing(choiceInfoOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(choiceListOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+      
+      // Start countdown for auto-selection
+      startChoiceCountdown();
+    } else {
+      // Reset animations when not at a choice point
+      choiceListOpacity.setValue(0);
+      choiceInfoOpacity.setValue(0);
+      setSelectedButtonIndex(null);
+    }
+  }, [isAtChoicePoint, isProcessingChoice]);
+  
+  // Render choice confirmation badge
+  const renderConfirmationBadge = () => (
+    <Animated.View 
+      style={[
+        styles.confirmationBadge,
+        {
+          opacity: confirmationBadgeOpacity,
+          transform: [{ scale: confirmationBadgeScale }]
+        }
+      ]}
+    >
+      <Text style={styles.confirmationText}>Choice Confirmed</Text>
+    </Animated.View>
+  );
+  
   // Main render
   return (
     <SafeAreaView style={styles.container}>
@@ -1775,6 +1868,39 @@ export const StoryReadScreen = () => {
           isActive={isVoiceActive} 
           onCancel={handleCancelVoiceInput} 
         />
+      )}
+      
+      {/* Choice UI */}
+      {isAtChoicePoint && !isProcessingChoice && (
+        <View style={styles.choiceContainer}>
+          <Animated.View 
+            style={[styles.choiceInfoContainer, { opacity: choiceInfoOpacity }]}
+          >
+            <Text style={styles.choiceQuestion}>What will you do?</Text>
+            <Animated.View style={[styles.countdownContainer, { transform: [{ scaleX: countdownAnim }] }]} />
+          </Animated.View>
+          
+          <Animated.View style={[styles.listContainer, { opacity: choiceListOpacity }]}>
+            <FlatList
+              data={availableChoices}
+              keyExtractor={item => item.id}
+              renderItem={renderChoices}
+              scrollEnabled={true}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.choiceList}
+            />
+          </Animated.View>
+          
+          {renderConfirmationBadge()}
+        </View>
+      )}
+      
+      {/* Loading indicator */}
+      {isLoading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#E50914" />
+          <Text style={styles.loadingText}>Loading next chapter...</Text>
+        </View>
       )}
     </SafeAreaView>
   );
@@ -2251,5 +2377,64 @@ const styles = StyleSheet.create<Styles>({
     color: 'white',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  confirmationBadge: {
+    position: 'absolute',
+    backgroundColor: '#E50914',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    bottom: '40%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  confirmationText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  choiceContainer: {
+    width: '100%',
+    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  choiceInfoContainer: {
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  listContainer: {
+    width: '100%',
+    maxHeight: 380,
+  },
+  choiceList: {
+    paddingBottom: 16,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 16,
   },
 }); 

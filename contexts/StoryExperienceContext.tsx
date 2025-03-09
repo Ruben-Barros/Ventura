@@ -12,148 +12,141 @@ import { speechRecognition } from '../services/audio/speechRecognition';
 import { karmaSystem, KarmaType } from '../services/game/karmaSystem';
 import { api } from '../services/api';
 import { Audio } from 'expo-av';
+import { kokoroAudio, EmotionType } from '../services/audio/KokoroAudioService';
 
 // Define the actions that can be dispatched to the reducer
 type StoryExperienceAction =
-  | { type: 'INITIALIZE_STORY', payload: { storyId: string } }
-  | { type: 'SET_SEGMENT', payload: { segment: any, audioSegment: any } }
-  | { type: 'SET_CHOICES', payload: { choices: StoryChoiceWithKarma[] } }
-  | { type: 'PLAYBACK_UPDATE', payload: { isPlaying: boolean, isPaused: boolean, currentTime: number, duration: number } }
-  | { type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: boolean } }
-  | { type: 'SELECT_CHOICE', payload: { choiceId: string } }
-  | { type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: boolean } }
-  | { type: 'SET_OPEN_ENDED_INPUT', payload: { input: OpenEndedInput | null } }
-  | { type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: boolean } }
-  | { type: 'UPDATE_USER_SETTINGS', payload: { settings: Partial<StoryExperienceState['userSettings']> } }
-  | { type: 'UPDATE_KARMA_SCORE', payload: { score: number } }
-  | { type: 'ADD_STORY_POINTS', payload: { points: number, reason: string } }
-  | { type: 'ADD_CHOICE_TO_HISTORY', payload: { segmentId: string, choiceId: string } }
-  | { type: 'SET_ERROR', payload: { error: string | null } }
-  | { type: 'RESET_STATE' }
-  | { type: 'SET_PLAYING', payload: boolean }
-  | { type: 'SET_PAUSED', payload: boolean }
-  | { type: 'LOAD_STORY', payload: any }
-  | { type: 'SET_CURRENT_SEGMENT', payload: any }
+  | { type: 'INIT_STORY'; payload: { storyId: string; segment: StorySegment; audioSegment: StoryAudioSegment; choices: StoryChoice[] } }
+  | { type: 'SET_SEGMENT'; payload: { segment: StorySegment; audioSegment: StoryAudioSegment } }
+  | { type: 'SET_CHOICES'; payload: { choices: StoryChoice[] } }
+  | { type: 'SELECT_CHOICE'; payload: { choiceId: string } }
+  | { type: 'SET_PROCESSING_CHOICE'; payload: { isProcessingChoice: boolean } }
+  | { type: 'SET_AT_CHOICE_POINT'; payload: { isAtChoicePoint: boolean } }
+  | { type: 'SET_INPUT_MODE'; payload: { inputMode: InputMode } }
+  | { type: 'UPDATE_KARMA_SCORE'; payload: { score: number } }
+  | { type: 'ADD_STORY_POINTS'; payload: { points: number; reason: string } }
+  | { type: 'ADD_CHOICE_TO_HISTORY'; payload: { segmentId: string; choiceId: string } }
+  | { type: 'PLAYBACK_UPDATE'; payload: { isPlaying: boolean; isPaused: boolean; currentTime: number; duration: number } }
+  | { type: 'SET_ERROR'; payload: { error: string } }
+  | { type: 'SET_LOADING_NEXT_SEGMENT'; payload: { isLoading: boolean } }
+  | { type: 'SET_OPEN_ENDED_INPUT'; payload: { input: OpenEndedInput | null } }
+  | { type: 'SET_PLAYING'; payload: boolean }
+  | { type: 'SET_PAUSED'; payload: boolean }
+  | { type: 'LOAD_STORY'; payload: any }
+  | { type: 'SET_CURRENT_SEGMENT'; payload: any }
   | { type: 'NEXT_SEGMENT' };
+
+// StoryExperienceState type
+interface StoryExperienceState {
+  storyId: string | null;
+  currentSegment: StorySegment | null;
+  currentAudioSegment: StoryAudioSegment | null;
+  availableChoices: StoryChoice[];
+  selectedChoiceId: string | null;
+  isProcessingChoice: boolean;
+  isAtChoicePoint: boolean;
+  karmaScore: number;
+  storyPoints: number;
+  choiceHistory: Array<{ segmentId: string; choiceId: string }>;
+  inputMode: InputMode;
+  isPlaying: boolean;
+  isPaused: boolean;
+  currentTime: number;
+  duration: number;
+  error: string | null;
+  isLoading: boolean;
+  openEndedInput: OpenEndedInput | null;
+}
 
 // Reducer function to handle state updates
 const storyExperienceReducer = (state: StoryExperienceState, action: StoryExperienceAction): StoryExperienceState => {
   switch (action.type) {
-    case 'INITIALIZE_STORY':
+    case 'INIT_STORY':
       return {
-        ...defaultStoryExperienceState,
-        storyId: action.payload.storyId
+        ...state,
+        storyId: action.payload.storyId,
+        currentSegment: action.payload.segment,
+        currentAudioSegment: action.payload.audioSegment,
+        availableChoices: action.payload.choices,
+        selectedChoiceId: null,
+        isProcessingChoice: false,
+        isAtChoicePoint: false,
+        choiceHistory: [],
+        isLoading: false,
+        error: null
       };
-    
     case 'SET_SEGMENT':
       return {
         ...state,
         currentSegment: action.payload.segment,
         currentAudioSegment: action.payload.audioSegment,
-        isAtChoicePoint: false,
-        selectedChoice: null,
+        selectedChoiceId: null,
+        isAtChoicePoint: false
       };
-    
     case 'SET_CHOICES':
       return {
         ...state,
-        availableChoices: action.payload.choices
+        availableChoices: action.payload.choices,
+        // Don't automatically set isAtChoicePoint here as we want to control it after narration
       };
-    
-    case 'PLAYBACK_UPDATE':
-      return {
-        ...state,
-        playbackState: {
-          isPlaying: action.payload.isPlaying,
-          isPaused: action.payload.isPaused,
-          currentTime: action.payload.currentTime,
-          duration: action.payload.duration
-        }
-      };
-    
-    case 'SET_AT_CHOICE_POINT':
-      return {
-        ...state,
-        isAtChoicePoint: action.payload.isAtChoicePoint
-      };
-    
     case 'SELECT_CHOICE':
       return {
         ...state,
-        selectedChoice: action.payload.choiceId
+        selectedChoiceId: action.payload.choiceId
       };
-    
     case 'SET_PROCESSING_CHOICE':
       return {
         ...state,
         isProcessingChoice: action.payload.isProcessingChoice
       };
-    
-    case 'SET_OPEN_ENDED_INPUT':
+    case 'SET_AT_CHOICE_POINT':
       return {
         ...state,
-        openEndedInput: action.payload.input
+        isAtChoicePoint: action.payload.isAtChoicePoint
       };
-    
-    case 'SET_LOADING_NEXT_SEGMENT':
+    case 'SET_INPUT_MODE':
       return {
         ...state,
-        isLoadingNextSegment: action.payload.isLoading
+        inputMode: action.payload.inputMode
       };
-    
-    case 'UPDATE_USER_SETTINGS':
-      return {
-        ...state,
-        userSettings: {
-          ...state.userSettings,
-          ...action.payload.settings
-        }
-      };
-    
     case 'UPDATE_KARMA_SCORE':
       return {
         ...state,
         karmaScore: action.payload.score
       };
-    
     case 'ADD_STORY_POINTS':
       return {
         ...state,
-        storyPoints: {
-          current: state.storyPoints.current + action.payload.points,
-          history: [
-            ...state.storyPoints.history,
-            {
-              amount: action.payload.points,
-              reason: action.payload.reason,
-              timestamp: Date.now()
-            }
-          ]
-        }
+        storyPoints: state.storyPoints + action.payload.points
       };
-    
     case 'ADD_CHOICE_TO_HISTORY':
       return {
         ...state,
-        choiceHistory: [
-          ...state.choiceHistory,
-          {
-            segmentId: action.payload.segmentId,
-            choiceId: action.payload.choiceId,
-            timestamp: Date.now()
-          }
-        ]
+        choiceHistory: [...state.choiceHistory, action.payload]
       };
-    
+    case 'PLAYBACK_UPDATE':
+      return {
+        ...state,
+        isPlaying: action.payload.isPlaying,
+        isPaused: action.payload.isPaused,
+        currentTime: action.payload.currentTime,
+        duration: action.payload.duration
+      };
     case 'SET_ERROR':
       return {
         ...state,
         error: action.payload.error
       };
-    
-    case 'RESET_STATE':
-      return defaultStoryExperienceState;
-    
+    case 'SET_LOADING_NEXT_SEGMENT':
+      return {
+        ...state,
+        isLoading: action.payload.isLoading
+      };
+    case 'SET_OPEN_ENDED_INPUT':
+      return {
+        ...state,
+        openEndedInput: action.payload.input
+      };
     case 'SET_PLAYING':
       // Ensure proper state flow for audio playback
       if (action.payload === true) {
@@ -168,31 +161,26 @@ const storyExperienceReducer = (state: StoryExperienceState, action: StoryExperi
           isPlaying: false
         };
       }
-      
     case 'SET_PAUSED':
       return {
         ...state,
         isPaused: action.payload
       };
-    
     case 'LOAD_STORY':
       return {
         ...state,
         story: action.payload
       };
-    
     case 'SET_CURRENT_SEGMENT':
       return {
         ...state,
         currentSegment: action.payload
       };
-    
     case 'NEXT_SEGMENT':
       return {
         ...state,
         currentSegmentIndex: state.currentSegmentIndex + 1
       };
-    
     default:
       return state;
   }
@@ -324,7 +312,7 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
       dispatch({ type: 'RESET_STATE' });
       
       // Initialize with the story ID first
-      dispatch({ type: 'INITIALIZE_STORY', payload: { storyId } });
+      dispatch({ type: 'INIT_STORY', payload: { storyId, segment: null, audioSegment: null, choices: [] } });
       dispatch({ type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: true } });
       
       // Create mock data
@@ -508,7 +496,72 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
         } 
       });
       
-      // Begin speaking with the TTS service
+      // Enhanced Kokoro audio experience
+      try {
+        // Initialize Kokoro audio service if not already
+        if (!kokoroAudio.isInitialized) {
+          await kokoroAudio.initialize();
+        }
+        
+        // First play the intro sound with fade-out
+        console.log('KOKORO: Playing intro sound before narration');
+        await kokoroAudio.playIntroSound();
+        
+        // Determine emotion based on content
+        let emotion = EmotionType.NEUTRAL;
+        if (content.includes('fear') || content.includes('scared') || content.includes('terrified')) {
+          emotion = EmotionType.FEARFUL;
+        } else if (content.includes('happy') || content.includes('joy') || content.includes('delighted')) {
+          emotion = EmotionType.HAPPY;
+        } else if (content.includes('mystery') || content.includes('strange') || content.includes('unknown')) {
+          emotion = EmotionType.MYSTERIOUS;
+        }
+        
+        // Start ambiance based on content keywords
+        if (content.includes('forest') || content.includes('woods') || content.includes('trees')) {
+          await kokoroAudio.startAmbiance('forest');
+        } else if (content.includes('cave') || content.includes('tunnel') || content.includes('underground')) {
+          await kokoroAudio.startAmbiance('cave');
+        } else if (content.includes('village') || content.includes('town') || content.includes('people')) {
+          await kokoroAudio.startAmbiance('village');
+        } else {
+          // Default ambiance
+          await kokoroAudio.startAmbiance('forest');
+        }
+        
+        // Start narration with fade-in and emotional inflection
+        console.log('KOKORO: Starting narration with emotion:', emotion);
+        await kokoroAudio.startNarration(finalContent, emotion);
+        
+        // If we have choices, append "What will you do?" at the end
+        if (hasChoices) {
+          // Give a short pause after the main narration
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Play the "What will you do?" prompt
+          console.log('KOKORO: Adding "What will you do?" prompt');
+          await kokoroAudio.startNarration("What will you do?", EmotionType.MYSTERIOUS);
+          
+          // Short delay before showing choices to allow the prompt to be heard
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Pause narration and play choice prompt sound
+          await kokoroAudio.pauseNarrationForChoices();
+          
+          // Show choices after narration completes
+          console.log('KOKORO: Narration complete, showing choices');
+          setTimeout(() => {
+            dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
+          }, 300);
+        }
+        
+        return;
+      } catch (error) {
+        console.error('Error with Kokoro audio experience:', error);
+        // Fall back to regular TTS if Kokoro fails
+      }
+      
+      // Fallback: Begin speaking with the regular TTS service
       const result = await textToSpeech.speak(finalContent, {
         onStart: () => {
           console.log('TTS started speaking segment content');
@@ -786,118 +839,125 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
     await storyAudioPlayer.seekTo(milliseconds);
   };
 
-  // Handle choice selection
+  // Modified function to make a choice with audio effects
   const makeChoice = async (choiceId: string) => {
     try {
-      const choice = state.availableChoices.find(c => c.id === choiceId);
-      if (!choice) return;
+      console.log('User selected choice:', choiceId);
       
-      dispatch({ type: 'SELECT_CHOICE', payload: { choiceId } });
+      // Set processing state
       dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: true } });
       
-      // Add to choice history
-      dispatch({ type: 'ADD_CHOICE_TO_HISTORY', payload: { segmentId: state.currentSegment?.id || '', choiceId } });
+      // Find the selected choice
+      const selectedChoice = state.availableChoices.find(choice => choice.id === choiceId);
+      if (!selectedChoice) {
+        console.error('Selected choice not found:', choiceId);
+        dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
+        return;
+      }
       
-      // Apply karma effect if any
-      if (choice.karmaImpact) {
-        await karmaSystem.addKarmaAction({
-          type: choice.karmaImpact.type,
-          value: choice.karmaImpact.value,
-          description: choice.karmaImpact.description
-        });
+      // Play appropriate sound effect based on choice
+      try {
+        // Determine effect type based on choice text
+        let effectType = 'default';
+        const choiceText = selectedChoice.choice_text.toLowerCase();
         
-        const karmaState = await karmaSystem.getKarmaState();
-        dispatch({ type: 'UPDATE_KARMA_SCORE', payload: { score: karmaState.score } });
+        if (choiceText.includes('walk') || choiceText.includes('run') || choiceText.includes('path')) {
+          effectType = 'footsteps';
+        } else if (choiceText.includes('door') || choiceText.includes('open') || choiceText.includes('enter')) {
+          effectType = 'door';
+        } else if (choiceText.includes('magic') || choiceText.includes('spell') || choiceText.includes('power')) {
+          effectType = 'magic';
+        }
         
-        // Award story points
-        if (choice.karmaImpact.type === KarmaType.GOOD) {
-          dispatch({ type: 'ADD_STORY_POINTS', payload: { points: 10, reason: 'Good choice' } });
-        } else if (choice.karmaImpact.type === KarmaType.EVIL) {
-          dispatch({ type: 'ADD_STORY_POINTS', payload: { points: 5, reason: 'Bold choice' } });
-        } else {
-          dispatch({ type: 'ADD_STORY_POINTS', payload: { points: 2, reason: 'Choice made' } });
+        // Play the effect using Kokoro
+        await kokoroAudio.playChoiceEffect(effectType);
+      } catch (error) {
+        console.error('Error playing choice effect:', error);
+        // Continue with choice processing even if effect fails
+      }
+      
+      // Process karma impact if present
+      if ((selectedChoice as StoryChoiceWithKarma).karmaImpact) {
+        const impact = (selectedChoice as StoryChoiceWithKarma).karmaImpact;
+        if (impact && typeof impact.value === 'number') {
+          const newScore = karmaSystem.adjustKarma(state.karmaScore, impact.value);
+          dispatch({ type: 'UPDATE_KARMA_SCORE', payload: { score: newScore } });
         }
       }
       
-      // In a real app, fetch the next segment based on the choice
-      // For now, we'll use a mock response delay
+      // Mock API call to get the next segment based on the choice
+      // In a real app, this would be an API call to your backend
       setTimeout(async () => {
-        // In a production app, this would be fetched from an API
-        const mockNextSegment = {
-          id: choice.next_segment_id,
-          story_id: state.storyId,
-          content: `You decided to ${choice.choice_text.toLowerCase()}. As you ${choice.choice_text.toLowerCase()}, you notice the air getting cooler and the sounds of the forest changing. The path ahead seems to lead towards a mysterious clearing.`,
-          segment_order: 2,
-          parent_segment_id: state.currentSegment?.id,
-          created_at: new Date().toISOString(),
-          created_by: null
-        };
-        
-        const mockNextAudioSegment = {
-          id: `audio_${choice.next_segment_id}`,
-          segmentId: choice.next_segment_id,
-          audioUrl: `https://example.com/stories/${choice.next_segment_id}.mp3`,
-          visualEffects: [{
-            type: 'background',
-            assetUrl: 'https://images.unsplash.com/photo-1425913397330-cf8af2ff40a1',
-            timing: { startTime: 0, duration: 0 }
-          }],
-          duration: 25000,
-          transcript: mockNextSegment.content
-        };
-        
-        // New choices for this segment
-        const mockNextChoices = [
-          {
-            id: `choice_${choice.next_segment_id}_1`,
-            segment_id: choice.next_segment_id,
-            choice_text: 'Investigate the clearing',
-            next_segment_id: 'segment_5',
-            created_at: new Date().toISOString(),
-            karmaImpact: {
-              type: KarmaType.GOOD,
-              value: 3,
-              description: 'Showing courage and curiosity'
-            }
-          },
-          {
-            id: `choice_${choice.next_segment_id}_2`,
-            segment_id: choice.next_segment_id,
-            choice_text: 'Proceed with caution',
-            next_segment_id: 'segment_6',
-            created_at: new Date().toISOString(),
-            karmaImpact: {
-              type: KarmaType.NEUTRAL,
-              value: 0,
-              description: 'A balanced approach'
-            }
-          },
-          {
-            id: `choice_${choice.next_segment_id}_3`,
-            segment_id: choice.next_segment_id,
-            choice_text: 'Turn back',
-            next_segment_id: 'segment_7',
-            created_at: new Date().toISOString(),
-            karmaImpact: {
-              type: KarmaType.EVIL,
-              value: 2,
-              description: 'Giving in to fear'
-            }
+        try {
+          console.log('Getting next segment for choice:', choiceId);
+          
+          dispatch({ type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: true } });
+          
+          // Save the choice to history
+          dispatch({ 
+            type: 'ADD_CHOICE_TO_HISTORY', 
+            payload: { 
+              segmentId: state.currentSegment?.id || 'unknown', 
+              choiceId: selectedChoice.id 
+            } 
+          });
+          
+          // Find the next segment 
+          const nextSegment = {
+            id: `segment_${Math.random().toString(36).substring(7)}`,
+            content: "The path ahead becomes clearer as you make your choice. You continue your journey, embracing the consequences of your decision."
+          };
+          
+          const nextAudioSegment = {
+            id: nextSegment.id,
+            url: null, // We're using TTS, not pre-recorded audio
+            transcript: nextSegment.content,
+            offset: 0,
+            duration: 0
+          };
+          
+          // Reset choice point state
+          dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: false } });
+          
+          // Update state with new segment
+          dispatch({ 
+            type: 'SET_SEGMENT', 
+            payload: { 
+              segment: nextSegment, 
+              audioSegment: nextAudioSegment
+            } 
+          });
+          
+          // Clear choices after selection
+          dispatch({ type: 'SET_CHOICES', payload: { choices: [] } });
+          
+          // End processing state
+          dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
+          
+          // Resume narration after choice is made
+          try {
+            await kokoroAudio.resumeNarrationAfterChoice(nextSegment.content);
+          } catch (error) {
+            console.error('Error resuming narration after choice:', error);
+            // Fallback: Use standard playback if Kokoro fails
+            await speakSegmentContent(dispatch, () => state)(nextSegment.content);
           }
-        ];
-        
-        dispatch({ type: 'SET_SEGMENT', payload: { segment: mockNextSegment, audioSegment: mockNextAudioSegment } });
-        dispatch({ type: 'SET_CHOICES', payload: { choices: mockNextChoices } });
-        dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
-        dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: false } });
-        
-        // Speak the new segment
-        await speakSegmentContent(dispatch, () => state)(mockNextSegment.content);
-      }, 1500);
+          
+          // Mark segment load as complete
+          dispatch({ type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: false } });
+          
+        } catch (error) {
+          console.error('Error processing choice:', error);
+          dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
+          dispatch({ type: 'SET_LOADING_NEXT_SEGMENT', payload: { isLoading: false } });
+          dispatch({ type: 'SET_ERROR', payload: { error: 'Failed to process choice. Please try again.' } });
+        }
+      }, 1500); // Short delay for better user experience
+      
     } catch (error) {
-      console.error('Error processing choice:', error);
-      dispatch({ type: 'SET_ERROR', payload: { error: 'Failed to process your choice. Please try again.' } });
+      console.error('Error in makeChoice:', error);
       dispatch({ type: 'SET_PROCESSING_CHOICE', payload: { isProcessingChoice: false } });
+      dispatch({ type: 'SET_ERROR', payload: { error: 'Failed to process choice. Please try again.' } });
     }
   };
 
@@ -1067,7 +1127,7 @@ export const StoryExperienceProvider: React.FC<StoryExperienceProviderProps> = (
 
   // Update user settings
   const updateUserSettings = (settings: Partial<StoryExperienceState['userSettings']>) => {
-    dispatch({ type: 'UPDATE_USER_SETTINGS', payload: { settings } });
+    dispatch({ type: 'SET_INPUT_MODE', payload: { inputMode: settings.preferredInputMode } });
   };
 
   // Reset the story experience state
