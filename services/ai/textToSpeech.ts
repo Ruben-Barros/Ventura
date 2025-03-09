@@ -202,6 +202,17 @@ class KokoroTTS {
   }
 }
 
+interface TTSOptions {
+  onStart?: () => void;
+  onComplete?: () => void;
+  onError?: (error: any) => void;
+  useSSML?: boolean; // Add this option to support SSML
+  pitch?: number;
+  rate?: number;
+  volume?: number;
+  language?: string;
+}
+
 // Service for converting text to speech audio using Kokoro TTS
 class TextToSpeechService {
   private isSpeaking: boolean = false;
@@ -279,74 +290,117 @@ class TextToSpeechService {
     return this.availableVoices.filter(voice => voice.quality === quality);
   }
 
-  // Speak text with specified options
-  async speak(
-    text: string,
-    options: {
-      voice?: string,
-      rate?: number,
-      pitch?: number,
-      language?: string,
-      volume?: number,
-      onStart?: () => void,
-      onComplete?: () => void,
-      onError?: (error: any) => void
-    } = {}
-  ): Promise<void> {
-    if (!this.initializationComplete) {
-      this.log(LogLevel.INFO, 'TTS not initialized, initializing now...');
-      await this.init();
-    }
-    
-    if (this.isSpeaking) {
-      this.log(LogLevel.DEBUG, 'Already speaking, stopping current speech...');
-      await this.stop();
-    }
-
-    const {
-      voice,
-      rate = 1.0,
-      pitch = 1.0,
-      language = 'en-US',
-      volume = 1.0,
-      onStart,
-      onComplete,
-      onError
-    } = options;
-
+  /**
+   * Speak text with TTS
+   * @param text Text or SSML to speak
+   * @param options Options for speech synthesis
+   */
+  async speak(text: string, options: TTSOptions = {}): Promise<boolean> {
     try {
-      if (!this.kokoroTTS) {
-        throw new Error('Kokoro TTS not initialized');
+      // Skip empty text
+      if (!text?.trim()) {
+        console.warn('Empty text provided to TTS service');
+        return false;
       }
 
+      // Check if already initialized
+      if (!this.initializationComplete) {
+        await this.init();
+      }
+
+      // Stop any ongoing speech
+      await this.stop();
+
+      // Set the voice parameters if provided
+      if (options.pitch) this.kokoroTTS.setPitch(options.pitch);
+      if (options.rate) this.kokoroTTS.setRate(options.rate);
+      if (options.volume) this.kokoroTTS.setVolume(options.volume);
+      if (options.language) this.kokoroTTS.setLanguage(options.language);
+
+      // Set callback handlers
+      const callbacks = {
+        onStart: options.onStart || (() => {}),
+        onComplete: options.onComplete || (() => {}),
+        onError: options.onError || ((error: any) => console.error('TTS error:', error)),
+      };
+
+      // Make sure we have active status
       this.isSpeaking = true;
       
-      // Call onStart callback if provided
-      if (onStart) onStart();
-      
-      // Configure voice settings
-      await this.kokoroTTS.setVoice(voice || 'default');
-      await this.kokoroTTS.setRate(rate);
-      await this.kokoroTTS.setPitch(pitch);
-      await this.kokoroTTS.setLanguage(language);
-      await this.kokoroTTS.setVolume(volume);
-      
-      // Speak the text and wait for completion
-      await this.kokoroTTS.speak(text, {
-        onComplete: () => {
-          this.isSpeaking = false;
-          if (onComplete) onComplete();
-        },
-        onError: (err: any) => {
-          this.isSpeaking = false;
-          if (onError) onError(err);
-          this.log(LogLevel.ERROR, 'Kokoro TTS error:', err);
-        }
-      });
+      // Process SSML if enabled
+      let processedText = text;
+      if (options.useSSML) {
+        console.log('Using SSML for enhanced narration');
+        processedText = this.processSpeechTagsForCompat(text);
+      }
+
+      console.log(`Speaking text with length: ${processedText.length}`);
+      // Start speaking with the TTS engine
+      await this.kokoroTTS.speak(processedText, callbacks);
+
+      return true;
     } catch (error) {
+      console.error('Error in speak function:', error);
+      options.onError?.(error);
       this.isSpeaking = false;
-      if (onError) onError(error);
-      this.log(LogLevel.ERROR, 'Error speaking text with Kokoro TTS:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Process SSML tags to ensure compatibility with the TTS engine
+   * Some TTS engines may not support all SSML tags
+   */
+  private processSpeechTagsForCompat(ssmlText: string): string {
+    try {
+      // If it's not SSML, just return the text
+      if (!ssmlText.includes('<speak>')) {
+        return ssmlText;
+      }
+      
+      console.log('Processing SSML tags for compatibility');
+      
+      // Extract the content between <speak> tags
+      const match = ssmlText.match(/<speak>([\s\S]*)<\/speak>/);
+      if (!match) {
+        console.warn('Invalid SSML structure, returning original text');
+        return ssmlText;
+      }
+      
+      let content = match[1];
+      
+      // Process prosody tags for rate, pitch, and volume
+      let modifiedContent = content;
+      
+      // Process break tags
+      modifiedContent = modifiedContent.replace(
+        /<break\s+time="(\d+)ms"\s*\/>/g, 
+        (_, ms) => {
+          // Convert break tags to pauses
+          const seconds = parseInt(ms) / 1000;
+          return ` [pause:${seconds}] `;
+        }
+      );
+      
+      // Process prosody tags
+      modifiedContent = modifiedContent.replace(
+        /<prosody\s+rate="([^"]*)"\s+pitch="([^"]*)"\s+volume="([^"]*)"\s*>([\s\S]*)<\/prosody>/g,
+        (_, rate, pitch, volume, content) => {
+          // Store these values for setting on the TTS engine
+          this.kokoroTTS.setRate(parseFloat(rate));
+          this.kokoroTTS.setPitch(parseFloat(pitch));
+          this.kokoroTTS.setVolume(parseFloat(volume));
+          
+          // Return the content without the prosody tags
+          return content;
+        }
+      );
+      
+      console.log('SSML processed for compatibility');
+      return modifiedContent;
+    } catch (error) {
+      console.error('Error processing SSML tags:', error);
+      return ssmlText; // Return original text on error
     }
   }
 
