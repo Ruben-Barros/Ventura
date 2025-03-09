@@ -995,19 +995,22 @@ export const StoryReadScreen = () => {
                   },
                   onComplete: () => {
                     console.log('Main narration completed, now showing choices');
-                    // Show choices immediately when narration finishes
+                    // Instead of directly using dispatch, use the setAtChoicePoint function
+                    // or another approach available in the component
                     setTimeout(() => {
-                      if (state.availableChoices.length > 0) {
-                        dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
+                      if (state.availableChoices && state.availableChoices.length > 0) {
+                        // Use a manual flag to indicate narration is complete
+                        setNarrationComplete(true);
+                        // The isAtChoicePoint will be set by the context automatically
                       }
                     }, 300);
                   },
                   onError: (error) => {
                     console.error('Error during narration:', error);
-                    // Show choices even if narration failed
+                    // Also handle errors without using dispatch
                     setTimeout(() => {
-                      if (state.availableChoices.length > 0) {
-                        dispatch({ type: 'SET_AT_CHOICE_POINT', payload: { isAtChoicePoint: true } });
+                      if (state.availableChoices && state.availableChoices.length > 0) {
+                        setNarrationComplete(true);
                       }
                     }, 300);
                   }
