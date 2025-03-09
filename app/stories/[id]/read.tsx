@@ -913,79 +913,14 @@ export const StoryReadScreen = () => {
         // Function to play the intro sequence with proper transitions
         const playIntroSequence = async () => {
           try {
-            console.log('Starting intro sequence with auto-playback...');
+            console.log('Skipping intro sequence, going directly to main narration...');
             
             // Set loading state to complete and audio as ready
             setLoadingPhase('ready');
             setAudioReady(true);
             
-            // Set state that intro is playing
-            setIsIntroPlaying(true);
-            
-            // First narrate a brief intro
-            const introText = "Welcome to the Forest of Whispers.";
-            
-            // Start the waveform animation
-            const animateWaveform = () => {
-              setAudioStatus(prev => ({ 
-                level: 0.3 + Math.random() * 0.7 
-              }));
-            };
-            
-            // Start updating audio levels every 200ms
-            const audioLevelInterval = setInterval(animateWaveform, 200);
-            
-            try {
-              // Play intro with callbacks
-              await textToSpeech.speak(introText, {
-                onStart: () => {
-                  console.log('Intro narration started');
-                  
-                  // Start visual feedback for audio
-                  Animated.timing(audioFeedbackAnim, {
-                    toValue: 1.2,
-                    duration: 800,
-                    useNativeDriver: true
-                  }).start();
-                },
-                onComplete: async () => {
-                  console.log('Intro narration completed');
-                  
-                  // Clear the audio level interval
-                  clearInterval(audioLevelInterval);
-                  
-                  // Add a clear pause between intro and main narration (2 seconds)
-                  console.log('Adding pause between intro and main narration');
-                  setIntroFadingOut(true);
-                  
-                  // Wait for pause to complete
-                  await new Promise(resolve => setTimeout(resolve, 2000));
-                  
-                  // Reset intro state
-                  setIsIntroPlaying(false);
-                  setIntroFadingOut(false);
-                  
-                  // Begin main narration
-                  console.log('Starting main narration after pause');
-                  startMainNarration();
-                },
-                onError: (error) => {
-                  console.error('Error during intro playback:', error);
-                  clearInterval(audioLevelInterval);
-                  
-                  // Skip to main narration on error
-                  setIsIntroPlaying(false);
-                  startMainNarration();
-                }
-              });
-            } catch (error) {
-              console.error('Error during TTS speak:', error);
-              clearInterval(audioLevelInterval);
-              
-              // Skip to main narration
-              setIsIntroPlaying(false);
-              startMainNarration();
-            }
+            // Skip intro and go straight to main narration
+            startMainNarration();
           } catch (error) {
             console.error('Error in playIntroSequence:', error);
             // Fallback to direct narration
@@ -1550,6 +1485,53 @@ export const StoryReadScreen = () => {
     }
   }, [isAtChoicePoint, isPlaying]);
   
+  // Create state to track if narration is complete
+  const [narrationComplete, setNarrationComplete] = useState(false);
+  
+  // Listen for narration completion
+  useEffect(() => {
+    // Setup listener for TTS completion
+    const handleTTSCompletion = () => {
+      console.log('Narration complete, ready to show choices');
+      setNarrationComplete(true);
+    };
+    
+    // Add a listener to the text-to-speech service if possible
+    if (textToSpeech && typeof textToSpeech.addCompletionListener === 'function') {
+      textToSpeech.addCompletionListener(handleTTSCompletion);
+    }
+    
+    // Another approach - listen for playback status changes
+    const handlePlaybackStatusChange = (status) => {
+      if (status && status.didJustFinish) {
+        console.log('Audio playback finished, ready to show choices');
+        setNarrationComplete(true);
+      }
+    };
+    
+    // Try to add the listener if the function exists
+    if (typeof playbackState.addStatusListener === 'function') {
+      playbackState.addStatusListener(handlePlaybackStatusChange);
+    }
+    
+    return () => {
+      // Clean up listeners if functions exist
+      if (textToSpeech && typeof textToSpeech.removeCompletionListener === 'function') {
+        textToSpeech.removeCompletionListener(handleTTSCompletion);
+      }
+      if (typeof playbackState.removeStatusListener === 'function') {
+        playbackState.removeStatusListener(handlePlaybackStatusChange);
+      }
+    };
+  }, []);
+  
+  // Reset narrationComplete when new segment loads
+  useEffect(() => {
+    if (isLoadingNextSegment) {
+      setNarrationComplete(false);
+    }
+  }, [isLoadingNextSegment]);
+
   // New state for enhanced features
   const [dailyChoices, setDailyChoices] = useState(0);
   const [storyPoints, setStoryPoints] = useState(0);
@@ -1596,13 +1578,15 @@ export const StoryReadScreen = () => {
       {/* Main Content - removed HQ badge and Lyrics button */}
       <View style={styles.content}>
         {!isAtChoicePoint && (
-          <Image 
+          <Image
             source={require('../../../assets/images/Netflix iOS 91.png')}
             style={styles.coverImage}
             resizeMode="contain"
           />
         )}
-        {isAtChoicePoint && renderChoices()}
+        
+        {/* Only show choices when narration is complete AND we're at a choice point */}
+        {isAtChoicePoint && narrationComplete && renderChoices()}
       </View>
       
       {/* Bottom Controls */}
