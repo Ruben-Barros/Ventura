@@ -1,0 +1,10 @@
+Audio Files Needed:
+
+1. intro_chime.mp3 - A short intro sound played before narration begins
+2. choice_prompt.mp3 - Sound played when a choice is presented to the user
+3. choice_selected.mp3 - Sound played when a choice is selected by the user
+4. forest_ambiance.mp3 - Background ambient sound for forest environment
+5. cave_ambiance.mp3 - Background ambient sound for cave environment
+6. footsteps.mp3 - Sound of footsteps for movement effects
+
+These files should be MP3 format and placed in this directory. 
