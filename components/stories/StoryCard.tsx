@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Image, Pressable } from 'react-native';
 import { Text, Card } from 'react-native-paper';
 import { Link } from 'expo-router';
-import { Story } from '../../context/StorytellerContext';
+import { Story } from '../../types/story.types'; // Corrected import path
 
 type StoryCardProps = {
   story: Story;
@@ -14,7 +14,7 @@ export default function StoryCard({ story }: StoryCardProps) {
       <Pressable style={styles.container}>
         <Card style={styles.card}>
           <Card.Cover 
-            source={{ uri: story.cover_image }} 
+            source={{ uri: story.cover_image_url }} // Corrected property name
             style={styles.cover}
           />
           <Card.Content style={styles.content}>
@@ -26,10 +26,10 @@ export default function StoryCard({ story }: StoryCardProps) {
             </Text>
             <View style={styles.metadata}>
               <Text variant="labelSmall" style={styles.genre}>
-                {story.genre}
+                {story.genre_ids?.[0] ?? 'Unknown Genre'} // Corrected property name
               </Text>
               <Text variant="labelSmall" style={styles.readTime}>
-                {story.read_time} min read
+                {story.estimated_length_minutes} min read // Corrected property name
               </Text>
             </View>
           </Card.Content>

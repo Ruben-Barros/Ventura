@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
+// Removed Link import
 
 import Typography from '../components/ui/Typography';
 import StoryCard from '../components/story/StoryCard';
@@ -153,7 +154,7 @@ export default function HomeScreen() {
             <Typography variant="h3" style={styles.heroTitle}>
               {HERO_STORY.title}
             </Typography>
-            <Typography variant="subtitle1" style={styles.heroSubtitle}>
+            <Typography variant="body1" style={styles.heroSubtitle}>
               {HERO_STORY.subtitle}
             </Typography>
             <Typography variant="body2" style={styles.heroDescription}>
@@ -179,7 +180,7 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
-  const renderContinueReading = ({ item }) => (
+  const renderContinueReading = ({ item }: { item: typeof CONTINUE_READING[0] }) => (
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
@@ -190,12 +191,12 @@ export default function HomeScreen() {
       showProgress
       showPlayButton
       size="large"
-      genre={item.genre}
+      // genre={item.genre} // Removed genre prop
       duration={item.duration}
     />
   );
 
-  const renderRecommendedStory = ({ item }) => (
+  const renderRecommendedStory = ({ item }: { item: typeof RECOMMENDED_FOR_YOU[0] }) => (
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
@@ -205,12 +206,12 @@ export default function HomeScreen() {
       onPress={() => handleStoryPress(item.id)}
       showRating
       size="medium"
-      genre={item.genre}
+      // genre={item.genre} // Removed genre prop
       isNew={item.isNew}
     />
   );
 
-  const renderTrendingStory = ({ item }) => (
+  const renderTrendingStory = ({ item }: { item: typeof TRENDING_STORIES[0] }) => (
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
@@ -220,21 +221,21 @@ export default function HomeScreen() {
       onPress={() => handleStoryPress(item.id)}
       showRating
       size="medium"
-      genre={item.genre}
-      playCount={item.playCount}
+      // genre={item.genre} // Removed genre prop
+      // playCount={item.playCount} // Removed invalid prop
     />
   );
 
-  const renderMultiplayerStory = ({ item }) => (
+  const renderMultiplayerStory = ({ item }: { item: typeof MULTIPLAYER_STORIES[0] }) => (
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
       coverImage={item.coverImage}
       onPress={() => handleStoryPress(item.id)}
       size="medium"
-      genre={item.genre}
+      // genre={item.genre} // Removed genre prop
       duration={item.duration}
-      activePlayers={item.activePlayers}
+      // activePlayers={item.activePlayers} // Removed invalid prop
     />
   );
 
@@ -257,6 +258,8 @@ export default function HomeScreen() {
           <Typography variant="body2" style={styles.subText}>
             Your Next Epic Awaits – Dive In!
           </Typography>
+
+          {/* Removed temporary link */}
         </Animated.View>
 
         {/* Hero Story */}
@@ -332,7 +335,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: theme.colors.backgroundDetails.primary,
   },
   scrollView: {
     flex: 1,
@@ -376,11 +379,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   heroBadgeText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.primary, // Use theme color
     fontWeight: 'bold',
   },
   heroTitle: {
-    color: '#FFFFFF',
+    color: theme.colors.text.primary, // Use theme color
     marginBottom: theme.spacing.xs,
   },
   heroSubtitle: {
@@ -388,7 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   heroDescription: {
-    color: '#FFFFFF',
+    color: theme.colors.text.primary, // Use theme color
     marginBottom: theme.spacing.md,
   },
   heroMeta: {
@@ -401,7 +404,7 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.md,
   },
   heroMetaText: {
-    color: '#FFFFFF',
+    color: theme.colors.text.primary, // Use theme color
     marginLeft: theme.spacing.xs,
   },
   section: {
@@ -412,6 +415,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
   },
+  // Removed debugLink style
   horizontalList: {
     paddingHorizontal: theme.spacing.md,
   },

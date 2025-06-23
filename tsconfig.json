@@ -2,11 +2,15 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "jsx": "react-native",
+    "jsx": "react-native", // Revert to Expo default
+    // Removed jsxImportSource
     "allowJs": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["react-native", "@react-three/fiber", "@types/three"] // Keep types
   },
   "include": [
+    "**/*.ts",  // Add .ts files
+    "**/*.tsx", // Add .tsx files
     "**/*.js",
     "**/*.jsx"
   ],

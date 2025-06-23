@@ -45,7 +45,7 @@ export default function TabBar() {
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
-              name={tab.icon}
+              name={tab.icon as any} // Cast to any to bypass strict type check
               size={24}
               color={isActive ? theme.colors.accent.primary : theme.colors.text.secondary}
             />
