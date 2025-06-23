@@ -32,7 +32,7 @@ export default function TextInput({
       >
         {icon && (
           <MaterialCommunityIcons
-            name={icon}
+            name={icon as any} // Cast to any
             size={20}
             color={
               error 

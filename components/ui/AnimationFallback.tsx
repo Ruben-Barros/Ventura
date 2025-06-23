@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Animated, Easing } from 'react-native';
+import { Animated, Easing, StyleSheet, StyleProp, ViewStyle } from 'react-native'; // Import StyleSheet and types
 
 /**
  * A hook that provides a compatible animation value that works
@@ -27,16 +27,25 @@ export function useCompatibleAnimation(initialValue: number = 0) {
 /**
  * A component that provides a fallback animation when Reanimated is not available
  */
-export function AnimatedView({ 
-  style, 
-  children, 
-  animatedValue, 
+interface AnimatedViewProps {
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+  animatedValue: Animated.Value; // Expecting Animated.Value from useCompatibleAnimation
+  animatedProperty?: string;
+  outputRange?: number[];
+  inputRange?: number[];
+}
+
+export function AnimatedView({
+  style,
+  children,
+  animatedValue,
   animatedProperty = 'opacity',
   outputRange = [0, 1],
   inputRange = [0, 1],
-}) {
+}: AnimatedViewProps) {
   const animatedStyle = {
-    ...style,
+    ...StyleSheet.flatten(style), // Correctly flatten the style prop
     [animatedProperty]: animatedValue.interpolate({
       inputRange,
       outputRange,

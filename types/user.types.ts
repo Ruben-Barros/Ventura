@@ -1,5 +1,5 @@
 // User-related types
-
+import { VisualMode } from './narration.types';
 export interface User {
   id: string;
   email: string;
@@ -33,6 +33,7 @@ export interface UserPreferences {
   preferred_story_length: PreferredStoryLength;
   preferred_narration_style: NarrationStyle;
   experience_mode: ExperienceMode;
+  visual_mode: VisualMode; // Added for Narration Screen v2 visual preference
   created_at: string;
   updated_at: string;
 }

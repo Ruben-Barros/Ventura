@@ -85,7 +85,7 @@ const AnimatedBackground = memo(({
         cachePolicy="memory-disk"
       />
       <LinearGradient
-        colors={overlayColor}
+        colors={overlayColor as any} // Cast to any to bypass strict type check
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}

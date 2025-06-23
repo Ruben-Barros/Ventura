@@ -41,7 +41,7 @@ const Card: React.FC<CardProps> = ({
         </LinearGradient>
       ) : (
         <View style={styles.content}>
-          <Typography variant="subtitle1" style={styles.title}>
+          <Typography variant="body1" style={styles.title}> // Changed to valid variant
             {title}
           </Typography>
           {subtitle && (

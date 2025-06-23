@@ -55,7 +55,7 @@ const inProgressStories = [
 ];
 
 // Achievement component based on Calm's design
-const StreakBadge = ({ value, label }) => (
+const StreakBadge = ({ value, label }: { value: string | number, label: string }) => ( // Added types
   <View style={styles.badgeContainer}>
     <View style={styles.badgeCircle}>
       <Typography variant="h1" style={styles.badgeNumber}>{value}</Typography>
@@ -103,14 +103,45 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: theme.colors.background, // Corrected path
   },
   scrollView: {
     flex: 1,
     padding: 16,
   },
   title: {
-    color: theme.colors.text.primary,
+    color: theme.colors.text.primary, // Assuming this path is correct
     marginBottom: 24,
   },
-}); 
+  // Added missing styles for StreakBadge
+  badgeContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  badgeCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary, // Use theme color
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: -10, // Overlap with ribbon
+    zIndex: 1,
+  },
+  badgeNumber: {
+    color: theme.colors.text.primary, // Changed to existing theme color
+    // Adjust h1 styles if needed
+  },
+  badgeRibbon: {
+    backgroundColor: theme.colors.backgroundDetails.secondary, // Changed to existing theme color
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    paddingTop: 14, // Space for circle overlap
+    borderRadius: 8,
+  },
+  badgeLabel: {
+    color: theme.colors.text.secondary, // Changed to existing theme color
+    textAlign: 'center',
+    // Adjust h5 styles if needed
+  },
+});

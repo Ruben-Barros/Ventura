@@ -74,7 +74,7 @@ const similarStories = [
 ];
 
 // Function to render star rating
-const renderStars = (rating) => {
+const renderStars = (rating: number) => { // Added type for rating
   const fullStars = Math.floor(rating);
   const halfStar = rating % 1 >= 0.5;
   const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
@@ -99,7 +99,7 @@ export default function StoryDetailScreen() {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   
-  const [storyDetails, setStoryDetails] = useState(null);
+  const [storyDetails, setStoryDetails] = useState<any>(null); // Added basic type
   const [userProgress, setUserProgress] = useState(mockStoryProgress);
   const [reviews, setReviews] = useState(mockReviews);
   const [newReview, setNewReview] = useState('');
@@ -157,9 +157,9 @@ export default function StoryDetailScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out this amazing interactive story: ${storyDetails.title} on Ventura!`,
+        message: `Check out this amazing interactive story: ${storyDetails?.title} on Ventura!`, // Added optional chaining
         url: `https://ventura.app/stories/${id}`,
-        title: `Share: ${storyDetails.title}`,
+        title: `Share: ${storyDetails?.title}`, // Added optional chaining
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -171,8 +171,8 @@ export default function StoryDetailScreen() {
       const review = {
         id: `new-${Date.now()}`,
         userId: user?.id || 'guest',
-        userName: user?.displayName || 'Guest Reader',
-        userAvatar: user?.photoURL || 'https://ui-avatars.com/api/?name=Guest+Reader',
+        userName: user?.email || 'Guest Reader', // Use email as fallback name
+        userAvatar: 'https://ui-avatars.com/api/?name=Guest+Reader', // Removed photoURL as it's not in User type
         rating: newRating,
         reviewText: newReview,
         createdAt: new Date().toISOString(),
@@ -258,7 +258,7 @@ export default function StoryDetailScreen() {
                 <Typography variant="h2" style={styles.title}>
                   {storyDetails.title}
                 </Typography>
-                <Typography variant="subtitle1" style={styles.subtitle}>
+                <Typography variant="body1" style={styles.subtitle}>
                   {storyDetails.subtitle}
                 </Typography>
                 <View style={styles.heroMeta}>
@@ -309,25 +309,25 @@ export default function StoryDetailScreen() {
             <View style={styles.statItem}>
               <MaterialCommunityIcons name="map-marker-path" size={24} color="#5B76CB" />
               <Typography variant="body2" style={styles.statText}>
-                {storyDetails.genre.length} Genres
+                {storyDetails?.genre?.length ?? 0} Genres
               </Typography>
             </View>
             <View style={styles.statItem}>
               <MaterialCommunityIcons name="gesture-tap" size={24} color="#5B76CB" />
               <Typography variant="body2" style={styles.statText}>
-                {storyDetails.difficulty}
+                {storyDetails?.difficulty}
               </Typography>
             </View>
             <View style={styles.statItem}>
               <MaterialCommunityIcons name="play-circle" size={24} color="#5B76CB" />
               <Typography variant="body2" style={styles.statText}>
-                {storyDetails.playCount} Plays
+                {storyDetails?.playCount ?? 0} Plays
               </Typography>
             </View>
           </View>
 
           <View style={styles.tagsContainer}>
-            {storyDetails.tags.map((tag) => (
+            {storyDetails?.tags?.map((tag: string) => ( // Added type for tag
               <View key={tag} style={styles.tagContainer}>
                 <Typography variant="caption" style={styles.tagText}>
                   {tag}
@@ -347,7 +347,7 @@ export default function StoryDetailScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.horizontalList}
           >
-            {similarStories.map((story) => (
+            {similarStories.map((story: any) => ( // Added basic type for story
               <TouchableOpacity 
                 key={story.id}
                 style={styles.similarStory}
@@ -361,7 +361,7 @@ export default function StoryDetailScreen() {
                     colors={['transparent', 'rgba(0,0,0,0.8)']}
                     style={styles.similarStoryGradient}
                   >
-                    <Typography variant="subtitle2" style={styles.similarStoryTitle}>
+                    <Typography variant="body2" style={styles.similarStoryTitle}>
                       {story.title}
                     </Typography>
                     <Typography variant="caption" style={styles.similarStoryGenre}>
@@ -591,4 +591,17 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontSize: 12,
   },
-}); 
+  // Added missing styles for renderStars
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  starIcon: {
+    marginRight: 2,
+  },
+  ratingText: {
+    marginLeft: 4,
+    color: '#FFD700', // Match star color
+    fontSize: 14,
+  },
+});

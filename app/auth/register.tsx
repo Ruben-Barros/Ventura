@@ -149,11 +149,11 @@ export default function RegisterScreen() {
                 showsVerticalScrollIndicator={false}
               >
                 <View style={styles.headerContainer}>
-                  <Typography variant="h3" gutterBottom align="center" style={styles.title}>
+                  <Typography variant="h3" style={[styles.title, { textAlign: 'center' }]}>
                     Join Ventura
                   </Typography>
                   
-                  <Typography variant="body1" gutterBottom align="center" style={styles.subtitle}>
+                  <Typography variant="body1" style={[styles.subtitle, { textAlign: 'center' }]}>
                     Create an account to start your storytelling adventure
                   </Typography>
                 </View>
@@ -162,9 +162,7 @@ export default function RegisterScreen() {
                   {error && (
                     <Typography
                       variant="body2"
-                      color="rgba(255, 100, 100, 0.9)"
-                      style={styles.errorText}
-                      align="center"
+                      style={[styles.errorText, { textAlign: 'center', color: 'rgba(255, 100, 100, 0.9)' }]}
                     >
                       {error}
                     </Typography>
@@ -258,7 +256,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: theme.colors.background, // Assuming theme.colors.background is the correct path
     padding: theme.spacing.md,
   },
   title: {

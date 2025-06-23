@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "ventura",
-    "newArchEnabled": true,
     "updates": {
       "fallbackToCacheTimeout": 0
     },
@@ -18,10 +17,15 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#6200EE"
-      }
+      },
+      "package": "com.rubarros.venturaapp"
     },
     "plugins": [
-      "expo-router"
-    ]
+      "expo-router",
+      "expo-asset"
+    ],
+    "extra": {
+      "googleTtsApiKey": "AIzaSyCStYeXTMsLYSKm04pJXhxvBWGcZr2WyNY"
+    }
   }
 }

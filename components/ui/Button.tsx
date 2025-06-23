@@ -56,7 +56,7 @@ const RADIUS = {
   pill: 999,
 };
 
-const getButtonColor = (variant) => {
+const getButtonColor = (variant: ButtonVariant | undefined) => { // Added type
   switch (variant) {
     case 'primary':
       return COLORS.primary;
@@ -69,7 +69,7 @@ const getButtonColor = (variant) => {
   }
 };
 
-const getButtonMode = (variant) => {
+const getButtonMode = (variant: ButtonVariant | undefined) => { // Added type
   switch (variant) {
     case 'primary':
       return 'contained';
@@ -84,7 +84,7 @@ const getButtonMode = (variant) => {
   }
 };
 
-const getButtonSize = (size) => {
+const getButtonSize = (size: 'small' | 'medium' | 'large' | undefined) => { // Added type
   switch (size) {
     case 'small':
       return {

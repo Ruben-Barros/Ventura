@@ -73,15 +73,13 @@ export default function LoginScreen() {
               <View style={styles.logoContainer}>
                 <Typography 
                   variant="h1" 
-                  style={styles.logoText}
-                  align="center"
+                  style={[styles.logoText, { textAlign: 'center' }]} // Merged styles
                 >
                   Ventura
                 </Typography>
                 <Typography 
-                  variant="subtitle1" 
-                  align="center"
-                  style={styles.tagline}
+                  variant="body1" // Changed to valid variant
+                  style={[styles.tagline, { textAlign: 'center' }]} // Merged styles
                 >
                   Your adventure awaits
                 </Typography>
@@ -91,9 +89,8 @@ export default function LoginScreen() {
                 {error && (
                   <Typography
                     variant="body2"
-                    color="rgba(255, 100, 100, 0.9)"
-                    style={styles.errorText}
-                    align="center"
+                    // color="rgba(255, 100, 100, 0.9)" // Removed invalid prop
+                    style={[styles.errorText, { textAlign: 'center', color: 'rgba(255, 100, 100, 0.9)' }]} // Merged styles, added color back
                   >
                     {error}
                   </Typography>

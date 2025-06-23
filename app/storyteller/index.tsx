@@ -90,7 +90,7 @@ const PERSONALIZATION_OPTIONS = [
 ];
 
 // Storyteller card component
-const StorytellerCard = ({ storyteller, isSelected, onSelect }) => (
+const StorytellerCard = ({ storyteller, isSelected, onSelect }: { storyteller: any, isSelected: boolean, onSelect: (id: string) => void }) => ( // Added types
   <TouchableOpacity 
     style={[styles.storytellerCard, isSelected && styles.selectedCard]} 
     onPress={() => onSelect(storyteller.id)}
@@ -114,7 +114,7 @@ const StorytellerCard = ({ storyteller, isSelected, onSelect }) => (
   </TouchableOpacity>
 );
 
-const PersonalizationSlider = ({ option, value, onChange }) => (
+const PersonalizationSlider = ({ option, value, onChange }: { option: any, value: number, onChange: (value: number) => void }) => ( // Added types
   <View style={styles.sliderContainer}>
     <View style={styles.sliderLabelRow}>
       <Typography variant="body1" style={styles.sliderLabel}>{option.name}</Typography>
@@ -138,7 +138,7 @@ const PersonalizationSlider = ({ option, value, onChange }) => (
   </View>
 );
 
-const StorytellerInfoCard = ({ storyteller }) => (
+const StorytellerInfoCard = ({ storyteller }: { storyteller: any }) => ( // Added basic type
   <Surface style={styles.infoCard}>
     <View style={styles.infoHeader}>
       <Typography variant="h4" style={styles.infoTitle}>About {storyteller.name}</Typography>
@@ -151,7 +151,7 @@ const StorytellerInfoCard = ({ storyteller }) => (
     <View style={styles.strengthsContainer}>
       <Typography variant="h5" style={styles.strengthsTitle}>Strengths</Typography>
       <View style={styles.strengthsList}>
-        {storyteller.strengths.map((strength, index) => (
+        {storyteller.strengths.map((strength: string, index: number) => ( // Added types
           <View key={index} style={styles.strengthItem}>
             <Ionicons name="star" size={16} color="#5B76CB" style={styles.strengthIcon} />
             <Typography variant="body2" style={styles.strengthText}>{strength}</Typography>
@@ -173,11 +173,11 @@ const StorytellerScreen = () => {
     isLoading 
   } = useStoryteller();
 
-  const handleStorytellerSelect = (id) => {
+  const handleStorytellerSelect = (id: string) => { // Added type
     selectStoryteller(id);
   };
 
-  const handleSliderChange = (optionId, value) => {
+  const handleSliderChange = (optionId: string, value: number) => { // Added types
     updateSettings({ [optionId]: value });
   };
 
@@ -254,7 +254,7 @@ const StorytellerScreen = () => {
           renderItem={({ item }) => (
             <StorytellerCard 
               storyteller={item} 
-              isSelected={selectedStoryteller && item.id === selectedStoryteller.id}
+              isSelected={!!(selectedStoryteller && item.id === selectedStoryteller.id)} // Ensure boolean
               onSelect={handleStorytellerSelect}
             />
           )}
@@ -279,8 +279,8 @@ const StorytellerScreen = () => {
             <PersonalizationSlider
               key={option.id}
               option={option}
-              value={settings[option.id]}
-              onChange={(value) => handleSliderChange(option.id, value)}
+              value={settings[option.id as keyof typeof settings]} // Added type assertion
+              onChange={(value: number) => handleSliderChange(option.id, value)} // Added type
             />
           ))}
         </View>

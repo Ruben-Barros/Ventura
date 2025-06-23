@@ -1,5 +1,5 @@
+import './shim'; // Import shim first for Node.js core modules
+import 'react-native-url-polyfill/auto';
 import 'react-native-reanimated';
-import { registerRootComponent } from 'expo';
-import App from './App';
-
-registerRootComponent(App); 
+// Ensure expo-router is imported after shim and polyfills
+import 'expo-router/entry';

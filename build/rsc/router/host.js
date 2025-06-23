@@ -187,7 +187,7 @@ const fetchRSC = (input, params, fetchCache = defaultFetchCache) => {
     if (entry && entry[0] === input && entry[1] === params) {
         return entry[2];
     }
-    // eslint-disable-next-line no-multi-assign
+     
     const prefetched = (globalThis.__EXPO_PREFETCHED__ ||= {});
     // TODO: Load from on-disk on native when indicated.
     // const reqPath = fetchOptions?.remote ? getAdjustedRemoteFilePath(url) : getAdjustedRemoteFilePath(url);
@@ -222,7 +222,7 @@ function getAdjustedRemoteFilePath(path) {
     return new URL(path, window.location.href).toString();
 }
 const prefetchRSC = (input, params) => {
-    // eslint-disable-next-line no-multi-assign
+     
     const prefetched = (globalThis.__EXPO_PREFETCHED__ ||= {});
     const url = getAdjustedRemoteFilePath(BASE_PATH + (0, utils_1.encodeInput)(input));
     if (!(url in prefetched)) {
