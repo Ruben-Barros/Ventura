@@ -27,4 +27,4 @@ const styles = StyleSheet.create({
   body2: theme.typography.body2,
   caption: theme.typography.caption,
   button: theme.typography.button,
-}); 
+});

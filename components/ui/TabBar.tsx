@@ -42,7 +42,7 @@ export default function TabBar() {
           <Link key={tab.href} href={tab.href} asChild>
             <Pressable style={styles.tab}>
               <Ionicons
-                name={isActive ? tab.activeIcon : tab.icon}
+                name={isActive ? tab.activeIcon as any : tab.icon as any} // Cast to any
                 size={24}
                 color={isActive ? '#000' : '#666'}
               />

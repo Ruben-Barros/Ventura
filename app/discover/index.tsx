@@ -112,7 +112,7 @@ export default function DiscoverScreen() {
     router.push(`/storytellers/${storytellerId}`);
   };
 
-  const renderStoryCard = ({ item }) => (
+  const renderStoryCard = ({ item }: { item: any }) => ( // Added basic type for item
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
@@ -125,7 +125,7 @@ export default function DiscoverScreen() {
     />
   );
 
-  const renderCollection = ({ item }) => (
+  const renderCollection = ({ item }: { item: any }) => ( // Added basic type for item
     <TouchableOpacity
       style={styles.collectionCard}
       onPress={() => handleCollectionPress(item.id)}
@@ -154,7 +154,7 @@ export default function DiscoverScreen() {
     </TouchableOpacity>
   );
 
-  const renderStoryteller = ({ item }) => (
+  const renderStoryteller = ({ item }: { item: any }) => ( // Added basic type for item
     <TouchableOpacity
       style={styles.storytellerCard}
       onPress={() => handleStorytellerPress(item.id)}
@@ -284,7 +284,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: theme.colors.background, // Corrected path
   },
   scrollView: {
     flex: 1,
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   searchBar: {
     marginHorizontal: 16,
     marginBottom: 24,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.backgroundDetails.secondary, // Use secondary background detail color
     borderRadius: 8,
   },
   searchInput: {

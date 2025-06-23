@@ -129,7 +129,7 @@ function getPathDataFromState(state, options) {
                     pattern
                         ?.split('/')
                         .filter((p) => expo.isDynamicPart(p))
-                        // eslint-disable-next-line no-loop-func
+                         
                         .forEach((p) => {
                         const name = expo.getParamName(p);
                         // Remove the params present in the pattern since we'll only use the rest for query string
