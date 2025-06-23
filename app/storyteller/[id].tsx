@@ -132,7 +132,7 @@ const STORYTELLER_LONG_DESCRIPTIONS = {
 };
 
 // TipCard component
-const TipCard = ({ tip, onPress }) => (
+const TipCard = ({ tip, onPress }: { tip: any, onPress: (id: string) => void }) => ( // Added types
   <TouchableOpacity 
     style={styles.tipCard}
     onPress={() => onPress(tip.id)}
@@ -157,7 +157,7 @@ const StorytellerDetailScreen = () => {
   const { id } = useLocalSearchParams();
   const { storytellers, selectedStoryteller, selectStoryteller, isLoading } = useStoryteller();
   
-  const [storyteller, setStoryteller] = useState(null);
+  const [storyteller, setStoryteller] = useState<any>(null); // Added type
   
   useEffect(() => {
     if (storytellers.length > 0 && id) {
@@ -172,7 +172,7 @@ const StorytellerDetailScreen = () => {
     router.back();
   };
   
-  const handleTipPress = (tipId) => {
+  const handleTipPress = (tipId: string) => { // Added type
     // In a real app, this would navigate to a detailed tip screen
     console.log('Tip pressed:', tipId);
   };
@@ -230,13 +230,13 @@ const StorytellerDetailScreen = () => {
             {storyteller.name}
           </Typography>
           
-          <Typography variant="subtitle1" style={styles.style}>
+          <Typography variant="body1" style={styles.style}> // Changed to valid variant
             {storyteller.style} Storyteller
           </Typography>
           
           <View style={styles.section}>
             <Typography variant="body1" style={styles.description}>
-              {STORYTELLER_LONG_DESCRIPTIONS[storyteller.id]}
+              {STORYTELLER_LONG_DESCRIPTIONS[storyteller.id as keyof typeof STORYTELLER_LONG_DESCRIPTIONS]}
             </Typography>
           </View>
           
@@ -246,7 +246,7 @@ const StorytellerDetailScreen = () => {
             </Typography>
             
             <View style={styles.strengthsList}>
-              {storyteller.strengths.map((strength, index) => (
+              {storyteller.strengths.map((strength: string, index: number) => ( // Added types
                 <View key={index} style={styles.strengthItem}>
                   <View style={styles.strengthDot} />
                   <Typography variant="body1" style={styles.strength}>
@@ -286,7 +286,7 @@ const StorytellerDetailScreen = () => {
             </Typography>
             
             <View style={styles.tipsList}>
-              {STORYTELLER_TIPS[storyteller.id]?.map((tip) => (
+              {STORYTELLER_TIPS[storyteller.id as keyof typeof STORYTELLER_TIPS]?.map((tip: any) => ( // Added type assertion and basic type
                 <TipCard 
                   key={tip.id}
                   tip={tip}

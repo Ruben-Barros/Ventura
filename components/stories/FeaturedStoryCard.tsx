@@ -3,7 +3,7 @@ import { StyleSheet, ImageBackground, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Story } from '../../context/StorytellerContext';
+import { Story } from '../../types/story.types'; // Corrected import path
 
 type FeaturedStoryCardProps = {
   story: Story;
@@ -14,7 +14,7 @@ export default function FeaturedStoryCard({ story }: FeaturedStoryCardProps) {
     <Link href={`/stories/${story.id}/read`} asChild>
       <Pressable style={styles.container}>
         <ImageBackground
-          source={{ uri: story.cover_image }}
+          source={{ uri: story.cover_image_url }} // Corrected property name
           style={styles.background}
           imageStyle={styles.image}
         >
@@ -29,7 +29,7 @@ export default function FeaturedStoryCard({ story }: FeaturedStoryCardProps) {
               {story.description}
             </Text>
             <Text variant="labelSmall" style={styles.metadata}>
-              {story.genre} • {story.read_time} min read
+              {story.genre_ids?.[0] ?? 'Unknown Genre'} • {story.estimated_length_minutes} min read // Corrected property names
             </Text>
           </LinearGradient>
         </ImageBackground>

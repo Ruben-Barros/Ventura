@@ -160,7 +160,7 @@ const InnerRouter = ({ routerData }) => {
             }, '', url);
             changeRoute(parseRoute(url), { skipRefetch: true });
         };
-        // eslint-disable-next-line no-multi-assign
+         
         const listeners = (routerData[1] ||= new Set());
         listeners.add(callback);
         return () => {

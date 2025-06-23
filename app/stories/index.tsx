@@ -87,7 +87,7 @@ const TRENDING_STORIES = [
 
 export default function StoriesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Added type
   const insets = useSafeAreaInsets();
 
   const handleStoryPress = (storyId: string) => {
@@ -103,7 +103,7 @@ export default function StoriesScreen() {
     router.push(`/stories?goal=${goalId}`);
   };
 
-  const renderCategory = ({ item }) => (
+  const renderCategory = ({ item }: { item: any }) => ( // Added basic type
     <TouchableOpacity
       style={[
         styles.categoryButton,
@@ -121,7 +121,7 @@ export default function StoriesScreen() {
         variant="body2" 
         style={[
           styles.categoryText,
-          selectedCategory === item.id && styles.categoryTextSelected
+          ...(selectedCategory === item.id ? [styles.categoryTextSelected] : []) // Conditionally spread style
         ]}
       >
         {item.name}
@@ -129,7 +129,7 @@ export default function StoriesScreen() {
     </TouchableOpacity>
   );
 
-  const renderGoal = ({ item }) => (
+  const renderGoal = ({ item }: { item: any }) => ( // Added basic type
     <TouchableOpacity
       style={styles.goalCard}
       onPress={() => handleGoalPress(item.id)}
@@ -158,7 +158,7 @@ export default function StoriesScreen() {
     </TouchableOpacity>
   );
 
-  const renderTrendingStory = ({ item }) => (
+  const renderTrendingStory = ({ item }: { item: any }) => ( // Added basic type
     <StoryCard
       title={item.title}
       subtitle={item.subtitle}
@@ -292,7 +292,7 @@ export default function StoriesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background.primary,
+    backgroundColor: theme.colors.background,
   },
   scrollView: {
     flex: 1,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   searchBar: {
     marginHorizontal: 16,
     marginBottom: 24,
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.backgroundDetails.secondary, // Corrected path
     borderRadius: 8,
   },
   searchInput: {
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.background.secondary,
+    backgroundColor: theme.colors.backgroundDetails.secondary, // Corrected path
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 8,
