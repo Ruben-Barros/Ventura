@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package ventura.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// The main service for interacting with stories.
+service StoryService {
+  // Retrieves the next segment of a story based on user choice.
+  rpc GetNextStorySegment(GetNextStorySegmentRequest) returns (GetNextStorySegmentResponse);
+}
+
+message GetNextStorySegmentRequest {
+  string user_id = 1;
+  string story_id = 2;
+  string choice_id = 3;
+}
+
+message GetNextStorySegmentResponse {
+  string segment_url = 1; // URL for the video segment
+  string tts_url = 2; // URL for the text-to-speech audio
+  BranchMeta branch_meta = 3;
+}
+
+message BranchMeta {
+  // Placeholder for metadata about the new branch
+  string next_choice_prompt = 1;
+}
+

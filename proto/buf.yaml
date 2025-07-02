@@ -1,0 +1,8 @@
+version: v1
+name: buf.build/venturastory/ventura
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE
