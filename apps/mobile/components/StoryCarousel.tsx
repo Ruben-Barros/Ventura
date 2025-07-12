@@ -21,6 +21,7 @@ const StoryCarousel: React.FC<StoryCarouselProps> = ({ genre, stories }) => {
         horizontal
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingLeft: 16 }}
         renderItem={({ item }) => (
           <Link href={`/story/${item.id}`} asChild>
             <Pressable>
